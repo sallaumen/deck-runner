@@ -1,0 +1,10 @@
+[Desktop Entry]
+Type=Application
+Name=Deck Runner
+Comment=Bancada de testes remotos
+Exec=/usr/bin/systemctl --user start --no-block deck-runner-display.service
+Icon=deck-runner
+StartupWMClass=deck-runner
+Terminal=false
+Categories=Development;Monitor;
+X-KDE-autostart-after=panel

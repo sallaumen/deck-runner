@@ -1,0 +1,108 @@
+<!doctype html>
+<html lang="pt-BR">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <meta name="theme-color" content="#10191c" />
+    <meta name="action-token" content="__TOKEN__" />
+    <title>Deck Runner · Bancada de testes</title>
+    <link rel="icon" href="/assets/icon.svg" type="image/svg+xml" />
+    <link rel="stylesheet" href="/assets/dashboard.css" />
+  </head>
+  <body>
+    <header>
+      <div class="brand">
+        <img src="/assets/icon.svg" alt="" width="42" height="42" /><strong
+          >Deck Runner</strong
+        >
+      </div>
+      <div class="top-actions">
+        <span id="connection" class="status" role="status">Conectando…</span
+        ><a class="button" id="switch" href="/?screen=1">Tela do Deck</a>
+      </div>
+    </header>
+    <main>
+      <div class="overview">
+        <div class="headline">
+          <p class="kicker">Bancada de testes</p>
+          <h1 id="summary">Conectando…</h1>
+          <p class="metrics">
+            <span>RAM livre <b id="ram">—</b></span
+            ><span>Disco livre <b id="disk">—</b></span>
+          </p>
+        </div>
+        <div class="capacity">
+          <div class="capacity-title">
+            <h2>Ocupação do Deck</h2>
+            <strong id="usage">—</strong>
+          </div>
+          <div class="slots" id="slots" aria-hidden="true"></div>
+          <p id="policy"></p>
+        </div>
+      </div>
+      <p class="message" id="message" role="status"></p>
+      <div class="toolbar hide-display">
+        <label for="filter"
+          >Projeto
+          <select id="filter">
+            <option value="">Todos os projetos</option>
+          </select></label
+        ><button id="pause" disabled>Pausar fila</button>
+      </div>
+      <div class="layout">
+        <div class="left">
+          <section class="block live">
+            <div class="bar">
+              <h2>Em execução</h2>
+              <span class="count" id="runningCount">—</span>
+            </div>
+            <div id="running"></div>
+          </section>
+          <section class="block">
+            <div class="bar"><h2 id="historyTitle">Últimos resultados</h2></div>
+            <div id="history"></div>
+            <button class="hide-display" hidden id="more">
+              Ver mais resultados
+            </button>
+          </section>
+        </div>
+        <div class="side">
+          <section class="block">
+            <div class="bar">
+              <h2>Projetos</h2>
+              <span id="projectCount" class="count">—</span>
+            </div>
+            <div id="projects"></div>
+            <details class="hide-display enrollment">
+              <summary>Adicionar projeto</summary>
+              <p>
+                No Mac, abra <strong>Adicionar projeto ao Deck</strong> na Mesa
+                e selecione a pasta do repositório em <code>~/projects</code>.
+              </p>
+            </details>
+          </section>
+          <section class="block">
+            <div class="bar">
+              <h2>Na fila</h2>
+              <span class="count" id="waitingCount">—</span>
+            </div>
+            <div id="waiting"></div>
+          </section>
+          <section class="trend">
+            <div class="trend-title">
+              <h2>Sequência recente</h2>
+              <span id="trendSummary"></span>
+            </div>
+            <div
+              id="trend"
+              role="list"
+              aria-label="Resultados do mais antigo ao mais recente"
+            ></div>
+          </section>
+        </div>
+      </div>
+    </main>
+    <footer><span>Steam Deck</span><time id="updated"></time></footer>
+    <script src="/assets/dashboard.js"></script>
+  </body>
+</html>

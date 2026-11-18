@@ -1,0 +1,16 @@
+[Unit]
+Description=Deck test executor (project queue)
+Requires=decktests.slice
+After=network.target decktests.slice
+
+[Service]
+Type=simple
+ExecStart=/usr/bin/python3 %h/.local/share/deck-runner/app/server.py serve
+Restart=always
+RestartSec=5
+UMask=0077
+Environment=PYTHONUNBUFFERED=1
+EnvironmentFile=-%h/.config/deck-runner/service.env
+
+[Install]
+WantedBy=default.target

@@ -1,0 +1,14 @@
+__pycache__/
+*.png
+validation-source/
+receipts/
+.env
+.env.*
+*.sqlite*
+*.log
+.playwright-mcp/
+ENVIRONMENT.md
+VALIDATION.md
+VALIDATION-v2.md
+!docs/station.png
+qa/node_modules/

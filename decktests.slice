@@ -1,0 +1,6 @@
+[Unit]
+Description=Steam Deck test containers
+[Slice]
+CPUQuota=500%
+MemoryMax=8G
+MemorySwapMax=0

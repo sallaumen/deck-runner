@@ -1,0 +1,11 @@
+[Unit]
+Description=Deck Runner desktop display
+PartOf=graphical-session.target
+After=graphical-session.target deck-runner.service
+Wants=deck-runner.service
+
+[Service]
+ExecCondition=/usr/bin/flatpak info com.google.Chrome
+ExecStart=%h/.local/share/deck-runner/app/open-panel.sh
+Restart=on-failure
+RestartSec=5
