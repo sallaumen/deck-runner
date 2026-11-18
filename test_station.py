@@ -47,6 +47,7 @@ class HttpTest(unittest.TestCase):
             "/",
             "/assets/dashboard.css",
             "/assets/dashboard.js",
+            "/assets/controller.js",
             "/assets/icon.svg",
         ]:
             code, headers, body = self.request(url)
@@ -66,6 +67,22 @@ class HttpTest(unittest.TestCase):
         for route, flag in [("/pause", True), ("/resume", False)]:
             self.assertEqual(self.request(route, "POST", form, headers)[0], 303)
             self.assertIs(json.loads(self.request("/api/status")[2])["paused"], flag)
+
+    def test_close_only_stops_display_and_requires_same_origin_and_token(self):
+        headers = {"Origin": f"http://127.0.0.1:{self.http.server_port}"}
+        form = urllib.parse.urlencode({"token": server.TOKEN})
+        with patch.object(server.subprocess, "run") as stop:
+            self.assertEqual(self.request("/display/close", "GET")[0], 404)
+            self.assertEqual(self.request("/display/close", "POST", form)[0], 403)
+            self.assertEqual(self.request("/display/close", "POST", "token=bad", headers)[0], 403)
+            stop.assert_not_called()
+            self.assertEqual(self.request("/display/close", "POST", form, headers)[0], 204)
+            stop.assert_called_once_with(
+                ["systemctl", "--user", "stop", "--no-block", "deck-runner-display.service"],
+                check=True, timeout=5,
+            )
+            stop.side_effect = OSError("systemd unavailable")
+            self.assertEqual(self.request("/display/close", "POST", form, headers)[0], 503)
 
     def test_old_bookmarks_keep_the_path_on_the_new_station(self):
         redirect = self.serve(server.LegacyRedirect)

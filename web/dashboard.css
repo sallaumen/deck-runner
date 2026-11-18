@@ -625,3 +625,65 @@ footer {
     order: 4;
   }
 }
+
+.station .top-actions {
+  flex-wrap: wrap;
+  justify-content: flex-end;
+}
+.station :focus-visible,
+.station [data-pad-focus]:focus {
+  outline: 3px solid var(--warm);
+  outline-offset: 2px;
+}
+#station-dialog {
+  width: min(42rem, calc(100% - 2rem));
+  max-height: 85vh;
+  padding: 24px;
+  color: var(--text);
+  background: var(--plate);
+  border: 1px solid var(--edge);
+  border-radius: 10px;
+}
+#station-dialog::backdrop {
+  background: rgb(5 12 14 / 78%);
+}
+#dialog-message {
+  margin-block: 12px;
+  color: var(--muted);
+}
+#dialog-log {
+  max-height: 48vh;
+  overflow: auto;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  font: 14px/1.5 var(--mono);
+}
+.dialog-actions {
+  display: flex;
+  gap: 12px;
+  justify-content: flex-end;
+}
+@media (max-width: 720px) {
+  .station header {
+    height: auto;
+    padding-block: 12px;
+    align-items: flex-start;
+  }
+  .station .top-actions {
+    gap: 6px;
+  }
+  .station .status {
+    flex-basis: 100%;
+    justify-content: flex-end;
+  }
+}
+
+@media (max-width: 720px) {
+  .station footer {
+    flex-wrap: wrap;
+  }
+  .station #pad-help {
+    flex-basis: 100%;
+    order: 1;
+  }
+}

@@ -12,7 +12,7 @@ import urllib.request
 
 from settings import PORT
 
-URL = f"http://127.0.0.1:{PORT}/?screen=1"
+URL = f"http://127.0.0.1:{PORT}/?screen=1&station=1"
 PROFILE = Path.home() / ".var/app/com.google.Chrome/config/deck-runner-display"
 PROFILE_ARG = f"--user-data-dir={PROFILE}"
 
@@ -75,6 +75,7 @@ def show():
         except OSError:
             time.sleep(2)
     fd = browser_handle()
+    proc = None
     if fd is None:
         proc = subprocess.Popen(
             [
@@ -102,6 +103,8 @@ def show():
         else:
             raise RuntimeError("The dedicated browser did not open")
     wait_handle(fd)
+    if proc is not None and proc.wait() != 0:
+        raise RuntimeError("The display browser exited unexpectedly")
 
 
 if __name__ == "__main__":

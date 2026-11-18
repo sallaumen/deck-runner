@@ -81,6 +81,88 @@ test(
       await page
         .getByRole("heading", { name: "Fila pausada" })
         .waitFor({ timeout: 12000 });
+      assert.equal(await page.locator("#leave").isVisible(), false);
+      await page.goto(url.origin + "/?screen=1&station=1");
+      await page.setViewportSize({ width: 1280, height: 800 });
+      await page.keyboard.press("ArrowDown");
+      assert.equal(
+        await page.evaluate(() => document.activeElement.id),
+        "switch",
+      );
+      await page.keyboard.press("ArrowRight");
+      assert.equal(
+        await page.evaluate(() => document.activeElement.id),
+        "leave",
+      );
+      await page.keyboard.press("Enter");
+      assert.equal(
+        await page
+          .locator("#confirm-leave")
+          .evaluate((el) => el === document.activeElement),
+        true,
+      );
+      await page.keyboard.press("Escape");
+      assert.equal(await page.locator("dialog").isVisible(), false);
+      await page.getByRole("link", { name: "Abrir controles" }).click();
+      assert.equal(new URL(page.url()).searchParams.get("station"), "1");
+      await page.locator("#history a").first().click();
+      await page.getByText(/resultado é fictício/).waitFor();
+      await page.keyboard.press("Escape");
+      await page.keyboard.press("Escape");
+      await page.keyboard.press("Escape");
+      // Exercise a standard controller after Steam Input switches to gamepad mode.
+      await page.evaluate(() => {
+        window.fixturePad = {
+          mapping: "standard",
+          axes: [0, 0],
+          buttons: Array.from({ length: 16 }, () => ({ pressed: false })),
+        };
+        Object.defineProperty(navigator, "getGamepads", {
+          value: () => [window.fixturePad],
+        });
+        document.querySelector("#switch").focus();
+        window.dispatchEvent(new Event("gamepadconnected"));
+      });
+      async function gamepad(input) {
+        await page.evaluate(async (input) => {
+          const pad = window.fixturePad;
+          if (input === "right") pad.axes[0] = 0.9;
+          else pad.buttons[input].pressed = true;
+          const tick = () =>
+            new Promise((resolve) => requestAnimationFrame(resolve));
+          await tick();
+          await tick();
+          pad.axes[0] = 0;
+          for (const key of pad.buttons) key.pressed = false;
+          await tick();
+          await tick();
+        }, input);
+      }
+      await gamepad("right");
+      assert.equal(
+        await page.evaluate(() => document.activeElement.id),
+        "leave",
+      );
+      await gamepad(0);
+      assert.equal(await page.locator("dialog").isVisible(), true);
+      await gamepad(1);
+      assert.equal(await page.locator("dialog").isVisible(), false);
+      await gamepad(1);
+      let closed = 0;
+      await page.route("**/display/close", (route) => {
+        assert.equal(route.request().method(), "POST");
+        closed++;
+        return route.fulfill({ status: 204 });
+      });
+      await page.locator("#confirm-leave").click();
+      await page.waitForFunction(
+        () => !document.querySelector("#confirm-leave").disabled,
+      );
+      assert.equal(closed, 1);
+      await page.keyboard.press("Escape");
+      await page.setViewportSize({ width: 375, height: 812 });
+      [width, viewport] = await dimensions();
+      assert.equal(width, viewport);
       assert.deepEqual(errors, []);
     } finally {
       try {

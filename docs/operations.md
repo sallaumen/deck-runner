@@ -15,11 +15,34 @@ O painel e a fila atendem somente em loopback. No Mac, abra **Testes no Deck**. 
 
 1. No Mac, execute `deck-runner doctor`. Ele verifica o SSH, a pulsação do executor e se o identificador da estação obtido pela porta local corresponde ao mesmo Deck.
 2. Se o SSH falhar, confirme que o Deck está acordado, na mesma rede e com `sshd` ativo. Teste `ssh -o BatchMode=yes deck@steamdeck.local true`. Se você trocou de rede ou de roteador, reveja a resolução do nome local. Se o SSH avisar que a identidade do host mudou, confira a chave no próprio Deck antes de confiar na nova identidade.
-3. Se o executor falhar, use no Deck `journalctl --user -u deck-runner.service -n 60`. Se o painel não abrir no Plasma, confirme `flatpak info com.google.Chrome` e rode `systemctl --user restart deck-runner-display.service`. A janela usa um perfil separado do navegador. O supervisor acompanha o processo real desse perfil, inclusive quando o Flatpak o inicia fora do serviço. Se o navegador encerrar, o painel reabre. Para fechá-lo de propósito, pare o serviço da janela. Se o Chrome pedir atualização ao iniciar, atualize o Flatpak pelo Discover e reinicie apenas o serviço da janela.
+3. Se o executor falhar, use no Deck `journalctl --user -u deck-runner.service -n 60`. Se o painel não abrir no Plasma, confirme `flatpak info com.google.Chrome` e rode `systemctl --user restart deck-runner-display.service`. A janela usa um perfil separado do navegador. O supervisor acompanha o processo real desse perfil, inclusive quando o Flatpak o inicia fora do serviço. A janela abre ao entrar no Desktop. Para sair, toque em **Fechar painel** ou pressione **B** e confirme com **A**. O executor continua atendendo os agentes. O atalho **Deck Runner** abre o painel de novo. Se o Chrome pedir atualização ao iniciar, atualize o Flatpak pelo Discover e reinicie apenas o serviço da janela.
 4. Se apenas o túnel falhar, consulte `~/Library/Logs/deck-runner/tunnel.log` e `lsof -nP -iTCP:4040 -sTCP:LISTEN` no Mac. Para refazer a conexão, use `launchctl kickstart -k "gui/$(id -u)/io.github.deck-runner.tunnel"`. Em uma rede conhecida, o LaunchAgent volta a tentar sozinho. Ele acompanha a sessão do usuário no Mac.
 5. Se um teste aguarda, leia o motivo no painel. Se encontrar uma falha, abra o log e confirme a árvore de origem com `deck-runner job ID` antes de repetir.
 
 O arquivo `~/.config/deck-runner/host` no Mac guarda o destino. O cliente também aceita `DECK_RUNNER_HOST` para uma conexão avulsa. Para mudar a conexão persistente, rode o instalador do Mac novamente.
+
+## Usar o Deck sem teclado
+
+Ao entrar na área de trabalho do Plasma, o atalho de inicialização abre **Deck Runner**. Use o analógico esquerdo ou o direcional para mover o foco. **A** seleciona. **B** volta de um log ou abre a confirmação para fechar o painel. O botão **Fechar painel** também funciona com o toque, o mouse e o teclado. O atalho **Deck Runner** na área de trabalho reabre a janela. Para jogar, use o modo Big Picture no Steam ou o atalho do SteamOS para o modo de jogo.
+
+## Retomar a transmissão no Mac
+
+Emparelhe o Steam Link, escolha o Desktop como destino da transmissão e deixe a janela aberta. O componente opcional **Deck Link** observa a inicialização do Deck pelo túnel local. Depois de um reinício, ele procura o nome do computador emparelhado e o botão de iniciar na janela do Steam Link. O Steam Link pode recriar a janela de vídeo durante a conexão. O Deck Link reaplica a posição e o tamanho da transmissão anterior. Fechar o aplicativo Steam Link encerra o monitoramento daquela sessão. A fila funciona enquanto a transmissão está fechada.
+
+Instale no Mac com as ferramentas de linha de comando do Xcode disponíveis:
+
+```sh
+python3 mac/install-link.py
+```
+
+Se o computador aparecer com outro nome na tela de emparelhamento, acrescente `--host-name "Nome no Steam Link"`. O macOS pede acesso de **Acessibilidade** para `~/Applications/Deck Link.app`. A autorização permite selecionar o botão do Steam Link. O auxiliar usa a árvore de acessibilidade do aplicativo e dispensa a gravação da tela. Uma atualização do executável compilado localmente pode exigir adicionar a nova cópia em **Privacidade e Segurança → Acessibilidade**. Repetir a instalação da mesma versão preserva a cópia autorizada.
+
+Para consultar a retomada, leia `~/Library/Logs/deck-runner/steam-link.log`. Para desativá-la, descarregue o serviço e remova seu arquivo de inicialização:
+
+```sh
+launchctl bootout "gui/$(id -u)/io.github.deck-runner.steam-link"
+mv ~/Library/LaunchAgents/io.github.deck-runner.steam-link.plist ~/Documents/
+```
 
 ## Limites e retenção
 
