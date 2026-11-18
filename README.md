@@ -51,6 +51,7 @@ O Deck admite até **cinco tarefas no total e três por projeto**. A fila també
 | Quero… | Onde encontrar |
 |---|---|
 | Cadastrar projetos Mix, Node, Python ou uma imagem própria | [Projetos e uso pelos agentes](docs/projects.md) |
+| Acompanhar o caminho do snapshot até o resultado | [Arquitetura e estados](docs/architecture.md) |
 | Entender a fila, revisar os limites ou recuperar a conexão | [Operação e diagnóstico](docs/operations.md) |
 | Modificar a interface ou executar as verificações | [Como contribuir](CONTRIBUTING.md) e [design do painel](DESIGN.md) |
 | Avaliar quais arquivos viajam e quem pode operar a fila | [Modelo de confiança](SECURITY.md) |
