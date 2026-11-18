@@ -9,6 +9,7 @@ from http.server import ThreadingHTTPServer
 from pathlib import Path
 from unittest.mock import patch
 
+import display
 import server
 import settings
 
@@ -81,3 +82,20 @@ class HttpTest(unittest.TestCase):
         for value in ["", "-F", "with space", "ssh://host"]:
             with self.assertRaises(ValueError):
                 settings.valid_host(value)
+
+
+class DisplayTest(unittest.TestCase):
+    def test_supervision_only_matches_the_main_browser_of_the_station(self):
+        main = [
+            b"/app/extra/chrome",
+            display.PROFILE_ARG.encode(),
+            ("--app=" + display.URL).encode(),
+        ]
+        self.assertTrue(display.is_display(main))
+        self.assertFalse(display.is_display(main + [b"--type=renderer"]))
+        self.assertFalse(
+            display.is_display([main[0], b"--user-data-dir=/personal", main[2]])
+        )
+        self.assertFalse(
+            display.is_display([main[0], main[1], b"--app=https://example.org/"])
+        )

@@ -6,6 +6,7 @@ Wants=deck-runner.service
 
 [Service]
 ExecCondition=/usr/bin/flatpak info com.google.Chrome
-ExecStart=%h/.local/share/deck-runner/app/open-panel.sh
-Restart=on-failure
+ExecStart=/usr/bin/python3 %h/.local/share/deck-runner/app/display.py
+ExecStop=/usr/bin/python3 %h/.local/share/deck-runner/app/display.py stop
+Restart=always
 RestartSec=5

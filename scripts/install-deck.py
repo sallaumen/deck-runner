@@ -51,6 +51,7 @@ def install():
             "settings.py",
             "run-project.sh",
             "open-panel.sh",
+            "display.py",
         ]
     }
     files.update(
@@ -143,7 +144,7 @@ def install():
         ctl("is-active", "--quiet", "graphical-session.target", check=False).returncode
         == 0
     ):
-        ctl("start", "--no-block", "deck-runner-display.service")
+        ctl("restart", "--no-block", "deck-runner-display.service")
 
 
 if __name__ == "__main__":
