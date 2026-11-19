@@ -189,7 +189,7 @@ function render() {
       recent.length +
       " passaram"
     : "Sem resultados";
-  byId("trend").innerHTML = recent
+  writeRows("trend", recent
     .map((j) => {
       const description = [
         j.meta.project,
@@ -198,7 +198,7 @@ function render() {
         resultTime(j.finished),
       ].join(" · ");
       return (
-        '<span role="listitem" class="' +
+        '<span role="listitem" data-result-id="' + esc(j.id) + '" class="' +
         esc(j.state) +
         '" aria-label="' +
         esc(description) +
@@ -207,7 +207,7 @@ function render() {
         '"></span>'
       );
     })
-    .join("");
+    .join(""));
   if (!workChosen && !byId("work-space").contains(document.activeElement))
     activate(!current.length && waiting.length ? "waiting" : "running");
   byId("used-count").textContent = String(active.length);
