@@ -58,7 +58,7 @@ def install():
     files.update(
         {
             APP / "web" / f: SRC / "web" / f
-            for f in ["icon.svg", "dashboard.css", "dashboard.js", "controller.js", "activity.js", "dashboard.html"]
+            for f in ["icon.svg", "dashboard.css", "dashboard.js", "controller.js", "activity.js", "limits.js", "dashboard.html"]
         }
     )
     files.update(

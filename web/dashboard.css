@@ -284,7 +284,8 @@ h2 {
 }
 .meter {
   display: inline-flex;
-  gap: 3px;
+  max-width: 82px;
+  gap: 1px;
 }
 .meter i {
   width: 8px;
@@ -894,4 +895,68 @@ footer {
   .display[data-state="idle"] #activity-period {
     min-height: 44px;
   }
+}
+
+.capacity-title #edit-limits {
+  margin-left: auto;
+  padding-inline: 10px;
+  font-size: 13px;
+}
+#limits-dialog {
+  color: var(--text);
+  width: min(26rem, calc(100% - 2rem));
+  max-height: 90vh;
+  padding: clamp(18px, 3vw, 26px);
+  background: var(--plate);
+  border: 1px solid var(--edge);
+  border-radius: 10px;
+}
+#limits-dialog::backdrop {
+  background: rgb(5 12 14 / 78%);
+}
+.limit-intro,
+.limit-info {
+  color: var(--muted);
+  font-size: 14px;
+  margin: 6px 0 16px;
+}
+.limit-info {
+  margin-top: 16px;
+}
+.limit-info b {
+  color: var(--text);
+}
+.limit-row,
+.stepper {
+  display: flex;
+  align-items: center;
+}
+.limit-row {
+  justify-content: space-between;
+  border-block-end: 1px solid var(--edge);
+  padding-block: 10px;
+}
+.stepper button {
+  width: 44px;
+  font-size: 18px;
+}
+.stepper [aria-disabled="true"] {
+  opacity: 0.5;
+  cursor: default;
+}
+.stepper output {
+  min-width: 3ch;
+  margin-inline: 4px;
+  text-align: center;
+  font: 600 22px var(--mono);
+}
+#limit-feedback:not(:empty) {
+  color: var(--warm);
+  font-size: 14px;
+  margin-bottom: 14px;
+}
+#save-limits {
+  background: var(--mint);
+  color: var(--bg);
+  font-weight: 650;
 }

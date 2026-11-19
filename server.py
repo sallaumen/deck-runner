@@ -52,6 +52,52 @@ TERMINAL = (
     "disk_limit",
 )
 TOKEN = secrets.token_urlsafe(32)
+MAX_SLOTS = 32
+CGROUP_ROOT = Path("/sys/fs/cgroup")
+DECK_SLICE = (
+    CGROUP_ROOT / "user.slice" / f"user-{os.getuid()}.slice"
+    / f"user@{os.getuid()}.service" / "decktests.slice"
+)
+
+
+def slot_limits(c):
+    row = c.execute("SELECT value FROM settings WHERE key='slots'").fetchone()
+    return tuple(json.loads(row[0])) if row else (GLOBAL_LIMIT, PROJECT_LIMIT)
+
+
+def change_limits(form):
+    def number(key):
+        values = form.get(key, [])
+        if len(values) != 1 or not re.fullmatch(r"[1-9][0-9]?", values[0]):
+            raise ValueError("Informe dois limites inteiros.")
+        return int(values[0])
+
+    new = (number("slots"), number("project_slots"))
+    previous = (number("previous_slots"), number("previous_project_slots"))
+    if not 1 <= new[1] <= new[0] <= MAX_SLOTS:
+        raise ValueError(f"Use de 1 a {MAX_SLOTS} vagas. O limite por projeto precisa caber no total.")
+    with contextlib.closing(db()) as c, c:
+        c.execute("BEGIN IMMEDIATE")
+        current = slot_limits(c)
+        if current != previous and new != current:
+            return False, current
+        c.execute("INSERT OR REPLACE INTO settings VALUES ('slots',?)", (json.dumps(new),))
+    return True, new
+
+
+def pool_budget(slots):
+    # Leave overhead inside the tests' cgroup as well as RAM for the desktop.
+    ceiling = max(POOL_MIB, slots * DEFAULT_MIB)
+    path = DECK_SLICE
+    try:
+        while path != CGROUP_ROOT:
+            limit = (path / "memory.max").read_text().strip()
+            if limit != "max":
+                ceiling = min(ceiling, max(0, int(limit) // MIB - 512))
+            path = path.parent
+    except (OSError, ValueError):
+        return min(ceiling, POOL_MIB)
+    return ceiling
 
 
 def db():
@@ -186,14 +232,14 @@ def gate():
     return ""
 
 
-def capacity_bytes(active):
+def capacity_bytes(active, pool_mib):
     reservations = [
         (m.get("budget_mib", DEFAULT_MIB) * MIB, used) for m, used in active
     ]
     reserved = sum(limit for limit, _ in reservations)
     unused = sum(max(0, limit - used) for limit, used in reservations)
     return min(
-        POOL_MIB * MIB - reserved, available_memory() - DESKTOP_MIB * MIB - unused
+        pool_mib * MIB - reserved, available_memory() - DESKTOP_MIB * MIB - unused
     )
 
 
@@ -208,6 +254,8 @@ def tail_log(path, size):
 
 def status():
     with contextlib.closing(db()) as c:
+        c.execute("BEGIN")
+        slots, project_slots = slot_limits(c)
         rows = c.execute("""
             SELECT * FROM jobs WHERE id IN (
                 SELECT id FROM jobs WHERE state IN ('running','queued')
@@ -236,15 +284,16 @@ def status():
     active = [(j["meta"], j["memory"]) for j in jobs if j["state"] == "running"]
     counts = Counter(m["project"] for m, _ in active)
     waiting = [j["meta"] for j in jobs if j["state"] == "queued"]
-    eligible = [m for m in waiting if counts[m["project"]] < PROJECT_LIMIT]
+    pool = pool_budget(slots)
+    eligible = [m for m in waiting if counts[m["project"]] < project_slots]
     if waiting and not reason:
-        if len(active) >= GLOBAL_LIMIT:
-            reason = "As cinco vagas estão ocupadas."
+        if len(active) >= slots:
+            reason = f"Limite do Deck atingido ({len(active)} em execução, limite de {slots})."
         elif not eligible:
-            reason = "Os projetos na fila já ocupam três vagas cada."
+            reason = f"Os projetos na fila atingiram o limite de {project_slots} por projeto."
         elif min(
             m.get("budget_mib", DEFAULT_MIB) * MIB for m in eligible
-        ) > capacity_bytes(active):
+        ) > capacity_bytes(active, pool):
             reason = "Aguardando memória para a próxima tarefa."
     return dict(
         instance=setting("instance_id"),
@@ -254,11 +303,12 @@ def status():
         alive=time.time() - float(setting("heartbeat") or 0) < 15,
         available_memory=available_memory(),
         disk_free=shutil.disk_usage(ROOT).free,
-        slots=GLOBAL_LIMIT,
-        project_slots=PROJECT_LIMIT,
+        slots=slots,
+        project_slots=project_slots,
+        max_slots=MAX_SLOTS,
         projects=list(projects().values()),
         memory_limit=DEFAULT_MIB * MIB,
-        pool_mib=POOL_MIB,
+        pool_mib=pool,
         reserve_mib=DESKTOP_MIB,
         cpu_limit=3,
         pool_cpus=5,
@@ -354,10 +404,11 @@ def claim():
             (json.loads(r["meta"]), r["memory"])
             for r in c.execute("SELECT meta,memory FROM jobs WHERE state='running'")
         ]
-        if len(active) >= GLOBAL_LIMIT or shutil.disk_usage(ROOT).free < 15 * GIB:
+        slots, project_slots = slot_limits(c)
+        if len(active) >= slots or shutil.disk_usage(ROOT).free < 15 * GIB:
             return None
         counts = Counter(m["project"] for m, _ in active)
-        capacity = capacity_bytes(active)
+        capacity = capacity_bytes(active, pool_budget(slots))
         queue = [
             (row["id"], json.loads(row["meta"]))
             for row in c.execute(
@@ -372,14 +423,14 @@ def claim():
                 continue
             seen_projects.add(name)
             if (
-                counts[name] >= PROJECT_LIMIT
+                counts[name] >= project_slots
                 or m.get("budget_mib", DEFAULT_MIB) * MIB > capacity
             ):
                 continue
             used = {
                 other.get("lane", 0) for other, _ in active if other["project"] == name
             }
-            m["lane"] = next(i for i in range(PROJECT_LIMIT) if i not in used)
+            m["lane"] = next(i for i in range(project_slots) if i not in used)
             c.execute(
                 "UPDATE jobs SET state='running',started=?,meta=? WHERE id=?",
                 (time.time(), json.dumps(m), job),
@@ -736,6 +787,7 @@ class Handler(http.server.BaseHTTPRequestHandler):
                 "/assets/dashboard.js",
                 "/assets/controller.js",
                 "/assets/activity.js",
+                "/assets/limits.js",
                 "/assets/icon.svg",
             ):
                 asset = assets / path.split("/")[-1]
@@ -788,6 +840,15 @@ class Handler(http.server.BaseHTTPRequestHandler):
         form = urllib.parse.parse_qs(self.rfile.read(size).decode())
         if not secrets.compare_digest(form.get("token", [""])[0], TOKEN):
             return self.send("Invalid token; reload the page", code=403)
+        if self.path == "/limits":
+            try:
+                changed, (slots, project_slots) = change_limits(form)
+            except ValueError as e:
+                return self.send(str(e), code=400)
+            return self.send(
+                json.dumps(dict(slots=slots, project_slots=project_slots)),
+                "application/json", code=200 if changed else 409,
+            )
         if self.path == "/pause":
             setting("paused", "1")
         elif self.path == "/resume":

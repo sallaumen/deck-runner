@@ -52,6 +52,7 @@ class HttpTest(unittest.TestCase):
             "/assets/dashboard.js",
             "/assets/controller.js",
             "/assets/activity.js",
+            "/assets/limits.js",
             "/assets/icon.svg",
         ]:
             code, headers, body = self.request(url)
@@ -73,6 +74,25 @@ class HttpTest(unittest.TestCase):
             self.assertEqual(view["projects"], [])
         for query in ["?hours=0", "?hours=", "?hours=6&hours=24"]:
             self.assertEqual(self.request("/api/activity" + query)[0], 400)
+
+    def test_limits_are_atomic_persistent_and_protected_against_stale_edits(self):
+        headers = {"Origin": f"http://127.0.0.1:{self.http.server_port}"}
+        form = dict(token=server.TOKEN, slots="8", project_slots="5",
+                    previous_slots="5", previous_project_slots="3")
+        def post(**changes):
+            return self.request("/limits", "POST", urllib.parse.urlencode({**form, **changes}), headers)
+        self.assertEqual(self.request("/limits", "POST", urllib.parse.urlencode(form))[0], 403)
+        self.assertEqual(post(token="wrong")[0], 403)
+        for invalid in ({"slots": "0"}, {"slots": "33"}, {"project_slots": "9"},
+                        {"previous_slots": ""}, {"slots": "8.5"}):
+            self.assertEqual(post(**invalid)[0], 400)
+        self.assertEqual(post()[0], 200)
+        self.assertEqual(post()[0], 200)  # retry after a lost confirmation
+        code, _, body = post(project_slots="4")
+        self.assertEqual(code, 409)
+        self.assertEqual(json.loads(body), {"slots": 8, "project_slots": 5})
+        current = json.loads(self.request("/api/status")[2])
+        self.assertEqual((current["slots"], current["project_slots"]), (8, 5))
 
     def test_pause_and_resume_require_same_origin_and_valid_action_token(self):
         form = urllib.parse.urlencode({"token": server.TOKEN})

@@ -5,7 +5,7 @@ A estação acompanha testes a uma distância de braço, em uma tela de 1280 × 
 | Elemento | Decisão |
 |---|---|
 | Superfícies | Fundo azul-petróleo escuro, planos sólidos e divisórias finas. Evitam reflexos visuais em uma tela sempre ligada. |
-| Hierarquia | Estado grande à esquerda, cinco segmentos de capacidade à direita, tarefas antes do histórico. No telefone, a fila precede os projetos e o histórico. |
+| Hierarquia | Estado grande à esquerda, indicador da ocupação e ajuste de vagas à direita, tarefas antes do histórico. No telefone, a fila precede os projetos e o histórico. |
 | Semântica | Menta para conexão, tarefas e aprovação. Âmbar para pausa e reconexão. Coral para falhas. Cada cor acompanha texto ou uma descrição acessível. |
 | Marca | Traço de retorno aberto com um segundo traço âmbar. O mesmo desenho identifica o lançador no Plasma, a aba do navegador e o cabeçalho. |
 | Tipografia | Fonte de interface do sistema, com Inter quando disponível. Números e diagnósticos em fonte monoespaçada. Os recursos visuais são locais. |

@@ -54,12 +54,18 @@ launchctl bootout "gui/$(id -u)/io.github.deck-runner.steam-link"
 mv ~/Library/LaunchAgents/io.github.deck-runner.steam-link.plist ~/Documents/
 ```
 
+## Ajustar as vagas
+
+Na tela principal do Deck ou do Mac, selecione **Ajustar vagas** ao lado de **Ocupação do Deck**. Use **+** e **−** para escolher o total e o máximo que um único projeto pode ocupar. Selecione **Aplicar**. O toque, o teclado e o direcional com o botão A funcionam nessa janela.
+
+A mudança vale para a próxima admissão e fica salva após suspensão, reinício e atualização. Ao reduzir o total abaixo da ocupação atual, as tarefas em andamento terminam normalmente. A fila volta a preencher vagas quando a ocupação fica abaixo do novo limite. O total e o limite por projeto são compartilhados por todos os agentes e worktrees. O comando `deck-runner status` mostra os valores atuais.
+
 ## Limites e retenção
 
 | Recurso | Limite |
 |---|---|
-| Concorrência | 5 tarefas no Deck, até 3 por repositório |
-| RAM | 1,25 / 2,5 / 5 GiB por tarefa. Reserva de até 7,5 GiB no conjunto, margem de 1,5 GiB no host, teto de 8 GiB para os containers |
+| Concorrência | De 1 a 32 no total. O limite por projeto pode ir até o total. Padrão inicial de 5 e 3. |
+| RAM | 1,25 / 2,5 / 5 GiB por tarefa. A reserva conjunta parte de 7,5 GiB e cresce com as vagas, limitada a 512 MiB abaixo do teto dos containers. O grupo pode usar até 80% da RAM física. A fila também desconta as reservas pendentes e preserva 1,5 GiB disponíveis para o sistema. |
 | CPU | Até 3 CPUs lógicas por tarefa e 5 para o conjunto |
 | Disco | Admissão a partir de 15 GiB livres. Durante a execução, proteção abaixo de 10 GiB |
 | Retenção | Worktrees por 24 horas, logs e referências das tarefas por 7 dias. O histórico de resultados continua em SQLite |

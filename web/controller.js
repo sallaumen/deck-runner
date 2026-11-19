@@ -185,7 +185,7 @@
       log.scrollBy(0, sign * log.clientHeight * 0.6);
       if (before !== log.scrollTop) return;
     }
-    const root = dialog.open ? dialog : document;
+    const root = document.querySelector("dialog[open]") || document;
     const candidates = [
       ...root.querySelectorAll(
         'button:enabled, a[href], select:enabled, summary, [tabindex="0"]',
@@ -215,10 +215,15 @@
     if (best) {
       best.setAttribute("data-pad-focus", "");
       best.focus();
-    } else if (vertical && !dialog.open)
+    } else if (vertical && root === document)
       window.scrollBy(0, (sign * innerHeight) / 2);
   }
-  const backAction = () => (dialog.open ? dialog.close() : askLeave());
+  const backAction = () => {
+    const open = document.querySelector("dialog[open]");
+    if (open) {
+      if (open.getAttribute("aria-busy") !== "true") open.close();
+    } else askLeave();
+  };
   document.addEventListener("keydown", (e) => {
     if (e.altKey || e.ctrlKey || e.metaKey) return;
     if (e.key === "Escape") {

@@ -46,7 +46,7 @@ deck-runner logs ID --tail 80
 deck-runner job ID
 ```
 
-O Deck admite até **cinco tarefas no total e três por projeto**. A fila também considera memória e espaço em disco. Cada tarefa tem seu próprio diretório de trabalho, container e, no perfil Mix, banco de dados. Quando o Mac se desconecta, as tarefas aceitas continuam no Deck.
+Em **Ocupação do Deck → Ajustar vagas**, escolha quantos testes podem rodar ao mesmo tempo no Deck e por projeto. A primeira instalação começa com cinco vagas no total e três por projeto. A fila também considera memória e espaço em disco. Cada tarefa tem seu próprio diretório de trabalho, container e, no perfil Mix, banco de dados. Quando o Mac se desconecta, as tarefas aceitas continuam no Deck.
 
 | Quero… | Onde encontrar |
 |---|---|
