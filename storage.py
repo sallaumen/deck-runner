@@ -15,7 +15,7 @@ STOP_AT = RESERVE + 2 * GIB
 ADMIT_AT = RESERVE + 5 * GIB
 GROUPS = ("worktrees", "cache", "repos", "jobs")
 REMOVE_LOCK = threading.Lock()
-CACHE_KEY = re.compile(r"(.+)-[0-9a-f]{12}-(?:[0-9a-f]{16}|unlocked)(?:-[0-9]+)?")
+CACHE_KEY = re.compile(r"(.+)-(?:[0-9a-f]{12}|v1)-(?:[0-9a-f]{16}|unlocked)(?:-[0-9]+)?")
 
 
 def allocated(parent):

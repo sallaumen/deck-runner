@@ -86,6 +86,9 @@ class StationStorageTest(unittest.TestCase):
         cache = self.root / "cache" / "alpha-123456789abc-unlocked-2"
         cache.mkdir(parents=True)
         (cache / "file").write_text("keep")
+        legacy_cache = cache.parent / "alpha-v1-db6739e613db3d9a"
+        legacy_cache.mkdir()
+        (legacy_cache / "file").write_text("legacy dependency")
         report, candidates = storage.inspect(self.root, server.db)
         self.assertEqual(set(candidates), {finished})
         self.assertEqual(report["total"], sum(report["groups"].values()))
@@ -108,6 +111,7 @@ class StationStorageTest(unittest.TestCase):
             work / queued,
             work / newer,
             cache / "file",
+            legacy_cache / "file",
             logs / "output.log",
             repo,
         ):
