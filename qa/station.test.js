@@ -376,7 +376,7 @@ test(
       assert.equal(await body.textContent(), held);
       unavailable = false;
       outputText =
-        "Somente as linhas recentes estão neste lote.\nFim do teste.";
+        "Somente as linhas recentes estão neste lote.\n22 tests, 0 failures\nFim do teste.";
       await page.route("**/api/status", (route) =>
         route.fulfill({
           json: {
@@ -411,6 +411,10 @@ test(
         () => !document.getElementById("dialog-message").textContent,
       );
       assert.equal(await body.textContent(), held);
+      assert.equal(
+        await page.locator("#suite-summary").innerText(),
+        "ExUnit · 22 testes, 0 falhas",
+      );
       assert.equal(await body.evaluate((e) => e.scrollTop), 80);
       await page.getByRole("button", { name: "Ir ao fim" }).click();
       await body.getByText(/Fim do teste/).waitFor();
