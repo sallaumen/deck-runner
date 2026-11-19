@@ -31,9 +31,22 @@
     showFor(byId("fx-launch"),1900);
   }
 
+  function showResult(job) {
+    const node = byId("fx-result");
+    node.dataset.state = job.state;
+    byId("fx-project").textContent = job.meta.project;
+    byId("fx-run-id").textContent = "#" + job.id.slice(-6);
+    byId("fx-verdict").textContent = "Passou!";
+    byId("fx-symbol").textContent = "✓";
+    byId("fx-job-name").textContent = job.meta.label;
+    showFor(node,3200);
+  }
+
   document.addEventListener("station-change", event => {
     if (document.hidden || !event.detail) return;
     const { jobs, previous } = event.detail;
+    const result = jobs.find(job=>job.state==="passed");
+    if (result && display && !reduced.matches) showResult(result);
     const started = jobs.find(job=>job.state==="running");
     if (started && display && !reduced.matches) showLaunch(started);
     if (!reduced.matches && jobs.some(job => job.state === "queued")) {
