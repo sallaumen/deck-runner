@@ -14,6 +14,12 @@
     "#ffa08b",
   ];
   const number = new Intl.NumberFormat("pt-BR", { maximumFractionDigits: 2 });
+  const compact = new Intl.NumberFormat("pt-BR", {
+    notation: "compact",
+    maximumFractionDigits: 1,
+  });
+  const tick = (value) =>
+    value >= 10000 ? compact.format(value) : number.format(value);
   const time = new Intl.DateTimeFormat("pt-BR", {
     hour: "2-digit",
     minute: "2-digit",
@@ -119,7 +125,7 @@
       ].join("\n");
       return `<rect x="${(i * 480) / count}" y="0" width="${480 / count}" height="72" fill="transparent"><title>${esc(label)}</title></rect>`;
     });
-    target.innerHTML = `<div class="activity-y" aria-hidden="true"><span>${number.format(top)}</span><span>${number.format(top / 2)}</span><span>0</span></div>
+    target.innerHTML = `<div class="activity-y" aria-hidden="true"><span title="${number.format(top)}">${tick(top)}</span><span title="${number.format(top / 2)}">${tick(top / 2)}</span><span>0</span></div>
       <svg role="img" aria-label="${esc(title)}" viewBox="0 0 480 72" preserveAspectRatio="none">
       <desc>${esc("Picos por projeto. " + peaks.join(". "))}</desc>
       <path class="activity-grid" d="M0 5H480 M0 36H480 M0 67H480" vector-effect="non-scaling-stroke" />
@@ -152,7 +158,7 @@
         .map(
           (row) => `<tr>
       <th scope="row" title="${esc(row.name)}"><svg viewBox="0 0 16 8" width="16" height="8" aria-hidden="true"><path d="M0 4H16" stroke="${color(row)}" stroke-width="2"/>${marker(row, 8, 4)}</svg>${esc(row.name)}</th>
-      <td>${row.count}</td><td>${esc(elapsed(row.runtime))}</td></tr>`,
+      <td title="${number.format(row.count)}">${tick(row.count)}</td><td title="${esc(elapsed(row.runtime))}">${esc(elapsed(row.runtime))}</td></tr>`,
         )
         .join("") || '<tr><td colspan="3">Nenhum projeto cadastrado.</td></tr>';
     const interval = sample.bucket_seconds / 60;

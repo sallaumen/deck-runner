@@ -50,12 +50,12 @@ let data,
   offline = false;
 const projectColors = new Map();
 function projectDot(name) {
-  const ink = projectColors.get(name);
-  return ink
-    ? '<svg class="project-dot" width="9" height="9" viewBox="0 0 10 10" aria-hidden="true"><circle cx="5" cy="5" r="4" fill="' +
-        esc(ink) +
-        '"/></svg>'
-    : "";
+  const ink = projectColors.get(name) || "none";
+  return (
+    '<svg class="project-dot" width="9" height="9" viewBox="0 0 10 10" aria-hidden="true"><circle cx="5" cy="5" r="4" fill="' +
+    esc(ink) +
+    '"/></svg>'
+  );
 }
 function writeRows(id, html) {
   const box = byId(id);
@@ -230,7 +230,8 @@ function render() {
         ? "Aguardando vaga"
         : "Pronto para testar";
   if (!data.alive) byId("summary").textContent = "Executor sem resposta";
-  byId("message").textContent = data.reason || "";
+  if (!offline && byId("message").textContent !== (data.reason || ""))
+    byId("message").textContent = data.reason || "";
   byId("policy").textContent =
     "Até " + data.project_slots + " execuções por projeto";
   byId("pause").disabled = !data.alive || data.instance === "preview";
@@ -241,15 +242,6 @@ function render() {
   const results = display
     ? history.filter((j) => projectsToShow.delete(j.meta.project))
     : history;
-  const workBox = byId("work-space");
-  workBox.classList.toggle(
-    "spacious",
-    panelsFit.matches &&
-      workView === "running" &&
-      current.length > 0 &&
-      current.length <= 3 &&
-      workBox.clientHeight >= current.length * 98,
-  );
   const activeRows = workPage(
     workView === "running" ? current : waiting,
     room("work-space"),
