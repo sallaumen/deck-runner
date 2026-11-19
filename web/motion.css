@@ -111,3 +111,11 @@
 .reader[data-read-outcome="problem"] {--reader-ink:var(--red);}
 .reader[data-read-outcome="stopped"] {--reader-ink:var(--warm);}
 .reader[data-read-outcome] #dialog-log {box-shadow:inset 3px 0 var(--reader-ink);}
+
+#fx-recent {margin-bottom:16px;border-block:1px solid var(--line);}
+#fx-recent summary {cursor:pointer;min-height:40px;padding:8px 0;color:var(--text);}
+#fx-recent-count {font:12px var(--mono);color:var(--mint);}
+#fx-recent-list {padding:0;margin:0;list-style:none;max-height:25dvh;overflow:auto;overscroll-behavior:contain;}
+#fx-recent-list li {display:flex;gap:12px;padding:5px 0;font-size:13px;overflow-wrap:anywhere;}
+#fx-recent-list time {font:12px var(--mono);color:var(--muted);flex:none;}
+#fx-no-events {font-size:13px;margin:0 0 10px;color:var(--muted);}
