@@ -833,14 +833,16 @@ class Handler(http.server.BaseHTTPRequestHandler):
                 "/assets/limits.js",
                 "/assets/storage.js",
                 "/assets/icon.svg",
+                "/assets/pilot.png",
             ):
                 asset = assets / path.split("/")[-1]
                 mime = {
                     ".css": "text/css",
                     ".js": "application/javascript",
                     ".svg": "image/svg+xml",
+                    ".png": "image/png",
                 }[asset.suffix]
-                return self.send(asset.read_bytes(), mime + "; charset=utf-8")
+                return self.send(asset.read_bytes(), mime if asset.suffix == ".png" else mime + "; charset=utf-8")
             if path == "/api/activity":
                 query = urllib.parse.parse_qs(urllib.parse.urlsplit(self.path).query, keep_blank_values=True)
                 values = query.get("hours", ["6"])

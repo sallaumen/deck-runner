@@ -14,3 +14,19 @@
 }
 
 #used-count {display:inline-block;transform-origin:52% 78%;font-variant-numeric:tabular-nums;}
+
+#fx-stage {position:fixed; z-index:6; inset:0; pointer-events:none; overflow:hidden; contain:strict;}
+.fx-scene {pointer-events:none;}
+#fx-launch {position:absolute;left:max(2.5vw,14px);top:22%;display:flex;align-items:center;gap:10px;
+  padding:5px 24px 7px 9px;max-width:75%;background:#142d31;border:2px solid #9de6bd;border-radius:12px 4px 14px 4px;
+  color:#f2ffe8;box-shadow:4px 5px 0 #091520;}
+#fx-launch strong,#fx-launch-name {display:block}
+#fx-launch strong {font-size:22px;font-weight:800;letter-spacing:-.035em}
+#fx-launch-name {font:13px var(--mono);color:#b2e6cf;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+#fx-launch>div {min-width:0}
+.fx-pilot {display:block;flex:none;width:72px;height:72px;background:url("/assets/pilot.png") no-repeat 0 0 / 400% 100%;
+  image-rendering:pixelated;}
+@media(prefers-reduced-motion:no-preference) {
+  #fx-launch:not([hidden]) .fx-pilot {animation:fx-stride 340ms steps(4,end) 5;}
+}
+@keyframes fx-stride { from {background-position-x:0} to{background-position-x:133.3333%} }

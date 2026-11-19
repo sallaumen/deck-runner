@@ -52,6 +52,7 @@ class HttpTest(unittest.TestCase):
             "/assets/dashboard.js",
             "/assets/motion.js",
             "/assets/motion.css",
+            "/assets/pilot.png",
             "/assets/controller.js",
             "/assets/activity.js",
             "/assets/limits.js",
