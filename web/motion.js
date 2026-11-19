@@ -41,6 +41,8 @@
     byId("fx-symbol").textContent = verdict.symbol;
     byId("fx-job-name").textContent = job.meta.label;
     showFor(node,3200);
+    byId("fx-sparks").replaceChildren();
+    if (job.state==="passed" && !reduced.matches) victorySparks();
   }
 
   const verdicts = {
@@ -52,6 +54,22 @@
   function mainResult(jobs) {
     return jobs.filter(j=>Object.hasOwn(verdicts,j.state)).sort((a,b)=>
       verdicts[b.state].rank-verdicts[a.state].rank || (b.finished||b.created)-(a.finished||a.created))[0];
+  }
+
+  function victorySparks() {
+    // Two fans frame the result; the centre stays quiet for reading.
+    const host=byId("fx-sparks");
+    for (const [index,[x,y,spin]] of [[-118,-65,-60],[-168,18,-32],[-100,96,38],[-54,-102,-25],
+      [120,-84,60],[166,6,22],[92,95,-40],[45,-108,26]].entries()) {
+      const spark=document.createElement("i");
+      spark.className=index%3===0?"fx-star":"fx-chip";
+      host.append(spark);
+      const side=x<0?-1:1;
+      const flight=spark.animate([{opacity:0,transform:"translate("+side*45+"px,4px) scale(.25)"},
+        {opacity:1,offset:.12},{opacity:1,offset:.57},{opacity:0,transform:"translate("+x+"px,"+y+"px) rotate("+spin+"deg) scale(.65)"}],
+        {duration:680+(index%3)*85,delay:[50,115,170,240][index%4],easing:"cubic-bezier(.19,.72,.21,1)",fill:"both"});
+      flight.finished.then(()=>spark.remove(),()=>spark.remove());
+    }
   }
 
   document.addEventListener("station-change", event => {
