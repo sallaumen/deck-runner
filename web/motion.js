@@ -84,6 +84,89 @@
       setTimeout(() => dismiss(node), ms),
     );
   }
+  const bay = document.querySelector(".bay");
+  const courier = bay.querySelector(".bay-courier");
+  const wave = bay.querySelector(".bay-wave");
+  function clearFlight() {
+    for (const node of [wave, courier])
+      node.getAnimations().forEach((animation) => animation.cancel());
+  }
+  function flight(state, project) {
+    if (
+      !display ||
+      reduced.matches ||
+      document.hidden ||
+      bay.hasAttribute("data-sleeping")
+    )
+      return;
+    clearFlight();
+    const inbound = state === "running";
+    const approved = state === "passed";
+    const color = inbound
+      ? projectColors.get(project) || "#8bead8"
+      : approved
+        ? "#adffcb"
+        : state === "failed"
+          ? "#ff897a"
+          : "#ffbd78";
+    courier.style.color = wave.style.color = color;
+    const path = inbound
+      ? [
+          { opacity: 0, transform: "translate(-230%, -250%) scale(.65)" },
+          { opacity: 1, offset: 0.15 },
+          {
+            opacity: 1,
+            transform: "translate(-23%, 2%) scale(1)",
+            offset: 0.69,
+          },
+          { opacity: 0, transform: "translate(4%, -4%) scale(.15)" },
+        ]
+      : [
+          { opacity: 0, transform: "scale(.18)" },
+          {
+            opacity: 1,
+            transform: "translate(-14%, -2%) scaleX(-1)",
+            offset: 0.23,
+          },
+          {
+            opacity: 1,
+            transform: "translate(-94%, -68%) scaleX(-1)",
+            offset: 0.64,
+          },
+          { opacity: 0, transform: "translate(-265%, -300%) scale(-.6,.6)" },
+        ];
+    courier.animate(path, {
+      id: "bay-flight",
+      duration: inbound ? 1140 : 990,
+      easing: "cubic-bezier(.22,.62,.38,1)",
+    });
+    wave.animate(
+      [
+        { opacity: 0, transform: "scale(.55)" },
+        { opacity: 0.9, offset: 0.2 },
+        { opacity: 0, transform: "scale(3.1,1.85)" },
+      ],
+      {
+        id: "bay-signal",
+        duration: 770,
+        delay: inbound ? 600 : 90,
+        easing: "ease-out",
+      },
+    );
+  }
+  let bayVisible = true;
+  function syncBayVisibility() {
+    const sleeping = document.hidden || !bayVisible;
+    bay.toggleAttribute("data-sleeping", sleeping);
+    if (sleeping) clearFlight();
+  }
+  if (display) {
+    new IntersectionObserver(([entry]) => {
+      bayVisible = entry.isIntersecting;
+      syncBayVisibility();
+    }).observe(bay);
+    document.addEventListener("visibilitychange", syncBayVisibility);
+  }
   function showLaunch(job, batch = [job]) {
     const names = [...new Set(batch.map((j) => j.meta.project))];
     byId("fx-launch-title").textContent =
@@ -96,6 +179,7 @@
         ? job.meta.label
         : batch.map((j) => j.meta.label).join(" · ");
     showFor(byId("fx-launch"), 1900);
+    if (byId("fx-result").hidden) flight("running", job.meta.project);
   }
 
   function showResult(job, batch = [job], enter = true, preview = false) {
@@ -136,6 +220,7 @@
           : seconds + "s";
     }
     if (enter) {
+      flight(job.state, job.meta.project);
       showFor(node, 3200);
       byId("fx-sparks").replaceChildren();
       if (job.state === "passed" && !reduced.matches) victorySparks();
@@ -249,6 +334,7 @@
   }
 
   function resetEffects() {
+    clearFlight();
     auditioning = false;
     for (const node of Array.from(scenes.keys())) dismiss(node);
     for (const [row, timer] of launched) {

@@ -860,6 +860,8 @@ class Handler(http.server.BaseHTTPRequestHandler):
                 "/assets/dashboard.js",
                 "/assets/motion.js",
                 "/assets/motion.css",
+                "/assets/station.css",
+                "/assets/gantry.webp",
                 "/assets/controller.js",
                 "/assets/activity.js",
                 "/assets/limits.js",
@@ -873,8 +875,9 @@ class Handler(http.server.BaseHTTPRequestHandler):
                     ".js": "application/javascript",
                     ".svg": "image/svg+xml",
                     ".png": "image/png",
+                    ".webp": "image/webp",
                 }[asset.suffix]
-                return self.send(asset.read_bytes(), mime if asset.suffix == ".png" else mime + "; charset=utf-8")
+                return self.send(asset.read_bytes(), mime if asset.suffix in (".png", ".webp") else mime + "; charset=utf-8")
             if path == "/api/activity":
                 query = urllib.parse.parse_qs(urllib.parse.urlsplit(self.path).query, keep_blank_values=True)
                 values = query.get("hours", ["6"])

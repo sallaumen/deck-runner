@@ -2,9 +2,11 @@
 
 Na tela de acompanhamento, abra **Efeitos** no rodapé. Escolha **Arcade** e, em **Experimentar no painel**, selecione **Início**, **Aprovação** ou **Falha**. A prévia desaparece sozinha. Você pode experimentar mesmo com todas as vagas ocupadas. A escolha de intensidade fica salva nesse navegador.
 
-![Uma tarefa fictícia entra na fila, o piloto anuncia sua partida, o placar verde celebra a terceira aprovação do projeto e um segundo teste termina com um placar coral](arcade.gif)
+![A doca recebe duas execuções fictícias. O bilhete indica os projetos e o piloto percorre a plataforma. Os placares menta e coral distinguem uma aprovação de uma falha.](arcade.gif)
 
 ## Como ler o painel de relance
+
+No modo Arcade, uma nave chega ao portal quando uma execução começa. O bilhete âmbar identifica a tarefa. Ao terminar, a nave parte e duas faixas diagonais enquadram o placar. As cores distinguem aprovação, falha e interrupção. Na doca ociosa, o piloto espera na plataforma. Com movimento reduzido, a cena fica parada.
 
 | O que aconteceu | O que aparece |
 |---|---|

@@ -52,6 +52,8 @@ class HttpTest(unittest.TestCase):
             "/assets/dashboard.js",
             "/assets/motion.js",
             "/assets/motion.css",
+            "/assets/station.css",
+            "/assets/gantry.webp",
             "/assets/pilot.png",
             "/assets/controller.js",
             "/assets/activity.js",
@@ -62,6 +64,9 @@ class HttpTest(unittest.TestCase):
             self.assertEqual(code, 200)
             self.assertIn("frame-ancestors 'none'", headers["Content-Security-Policy"])
             self.assertTrue(body)
+            if url == "/assets/gantry.webp":
+                self.assertEqual(headers["Content-Type"], "image/webp")
+                self.assertEqual(body[8:12], b"WEBP")
         self.assertEqual(
             self.request(headers={"Host": "not-the-station.invalid"})[0], 403
         )

@@ -16,3 +16,5 @@ A estação acompanha testes a uma distância de braço, em uma tela de 1280 × 
 | Interação | Em paisagem, as listas paginam pelo número de linhas que cabe no espaço entre a ocupação e os gráficos. As setas preservam a página durante as leituras da fila. Em formato de telefone as seções ficam empilhadas. No modo de operação, filtro, pausa, logs e cancelamento têm nomes explícitos e foco visível. |
 
 Os valores de cor e tipografia estão em `web/dashboard.css`. Valide mudanças em 1280 × 800 e 375 × 812, com a fila vazia, ativa, pausada e sem conexão. Use `scripts/preview.py` para imagens públicas.
+
+Na tela de acompanhamento, o projeto ocupa o primeiro plano de uma doca em pixel art. O portal usa a cor do projeto que começou mais recentemente e o piloto percorre a plataforma enquanto há testes ativos. O nome da tarefa sob o título abre o log. Sem testes ativos, esse espaço mostra a primeira tarefa em espera ou o resultado mais recente. A composição específica do Deck está em `web/station.css`.
