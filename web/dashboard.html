@@ -200,7 +200,7 @@
       </section>
     </main>
     <footer>
-      <span>Steam Deck</span>
+      <span class="fx-footer">Steam Deck <button id="fx-settings" aria-haspopup="dialog">Efeitos</button></span>
       <span id="pad-help" hidden>Direcional move · A seleciona · B volta</span>
       <time id="updated"></time>
     </footer>
@@ -350,6 +350,13 @@
         <button id="dialog-back">Voltar</button>
         <button id="confirm-leave" hidden>Fechar painel</button>
       </div>
+    </dialog>
+    <dialog id="fx-dialog" aria-labelledby="fx-dialog-title">
+      <h2 id="fx-dialog-title">Efeitos do painel</h2>
+      <label for="fx-mode">Intensidade</label>
+      <select id="fx-mode"><option value="arcade">Arcade</option><option value="quiet">Discreto</option><option value="off">Sem efeitos</option></select>
+      <p id="fx-mode-help"></p>
+      <div class="dialog-actions"><button id="fx-back">Voltar</button></div>
     </dialog>
     <div id="fx-stage" aria-hidden="true" inert>
       <div id="fx-result" class="fx-scene" hidden>

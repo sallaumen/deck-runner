@@ -521,7 +521,7 @@ function signalChanges(previous) {
   note.title = latest.meta.label;
   note.dataset.state = latest.state;
   if (!previous) return;
-  if (!matchMedia("(prefers-reduced-motion: reduce)").matches) {
+  if (document.documentElement.dataset.effects!=="off" && !matchMedia("(prefers-reduced-motion: reduce)").matches) {
     const accent = ["failed", "disk_limit", "timeout", "output_limit"].includes(
       latest.state,
     )

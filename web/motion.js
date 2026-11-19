@@ -120,8 +120,30 @@
   window.addEventListener("pagehide",resetEffects);
   document.addEventListener("visibilitychange",()=>{ if(document.hidden) resetEffects(); });
 
+  const dialog=byId("fx-dialog"), modeInput=byId("fx-mode");
+  const modeKey="deck-runner:effects:v1";
+  const modes={arcade:"Piloto, brilho e placar de resultado.",quiet:"Destaques nas linhas e no cabeçalho.",off:"Somente os dados da fila."};
+  let mode="arcade";
+  function setMode(value) {
+    mode=Object.hasOwn(modes,value)?value:"arcade";
+    modeInput.value=mode;
+    document.documentElement.dataset.effects=mode;
+    byId("fx-mode-help").textContent=reduced.matches && mode==="arcade" ? "O sistema pediu movimento reduzido. Os avisos aparecem parados." : modes[mode];
+    resetEffects();
+  }
+  try {setMode(localStorage.getItem(modeKey));} catch {setMode("arcade");}
+  modeInput.onchange=()=>{
+    setMode(modeInput.value);
+    try {localStorage.setItem(modeKey,mode);} catch { /* Applies to this window. */ }
+  };
+  reduced.addEventListener("change",()=>setMode(mode));
+  window.addEventListener("storage",e=>{if(e.key===modeKey || !e.key) setMode(e.newValue);});
+  byId("fx-settings").onclick=()=>{dialog.showModal();modeInput.focus();};
+  byId("fx-back").onclick=()=>dialog.close();
+  dialog.addEventListener("close",()=>byId("fx-settings").focus({preventScroll:true}));
+
   document.addEventListener("station-change", event => {
-    if (document.hidden || !event.detail) return;
+    if (document.hidden || !event.detail || mode!=="arcade") return;
     const { jobs, previous } = event.detail;
     const result = mainResult(jobs);
     if (result && display) presentResults(jobs);
