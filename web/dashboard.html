@@ -103,6 +103,46 @@
           </section>
         </div>
       </div>
+      <section
+        class="project-activity"
+        id="project-activity"
+        aria-label="Atividade por projeto"
+      >
+        <div class="activity-key">
+          <div class="activity-heading">
+            <h2>Por projeto</h2>
+            <select id="activity-period" aria-label="Período dos gráficos">
+              <option value="6">Últimas 6 h</option>
+              <option value="24">Últimas 24 h</option>
+            </select>
+          </div>
+          <table aria-label="Totais por projeto no período">
+            <thead>
+              <tr>
+                <th scope="col">Projeto</th>
+                <th scope="col">Envios</th>
+                <th scope="col">Tempo</th>
+              </tr>
+            </thead>
+            <tbody id="activity-totals"></tbody>
+          </table>
+        </div>
+        <figure class="activity-figure" aria-labelledby="requests-title">
+          <figcaption>
+            <strong id="requests-title">Envios de testes</strong
+            ><span class="activity-unit"></span>
+          </figcaption>
+          <div id="request-plot" class="activity-plot"></div>
+        </figure>
+        <figure class="activity-figure" aria-labelledby="runtime-title">
+          <figcaption>
+            <strong id="runtime-title">Tempo de execução</strong
+            ><span class="activity-unit"></span>
+          </figcaption>
+          <div id="runtime-plot" class="activity-plot"></div>
+        </figure>
+        <p id="activity-status" role="status">Carregando atividade…</p>
+      </section>
     </main>
     <footer>
       <span>Steam Deck</span>
@@ -126,6 +166,7 @@
       </div>
     </dialog>
     <script src="/assets/dashboard.js"></script>
+    <script src="/assets/activity.js"></script>
     <script src="/assets/controller.js"></script>
   </body>
 </html>

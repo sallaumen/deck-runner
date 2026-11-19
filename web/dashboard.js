@@ -100,7 +100,7 @@ function render() {
       );
     })
     .join("");
-  byId("running").classList.toggle("many", display && current.length >= 3);
+  byId("running").classList.toggle("many", display && current.length >= 2);
   byId("usage").textContent = active.length + " / " + data.slots;
   byId("runningCount").textContent = current.length;
   document.body.dataset.state = data.paused

@@ -11,6 +11,7 @@ from urllib.parse import urlsplit
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 from server import Handler
+from activity import summarize
 
 
 def sample(state):
@@ -76,6 +77,20 @@ def sample(state):
 
 
 class Preview(Handler):
+    def activity(self, hours):
+        # Demonstration history is independent of the small job list shown on screen.
+        now = int(time.time())
+        projects = [(p["name"], i) for i, p in enumerate(self.server.sample["projects"])]
+        jobs = []
+        for i, (name, _) in enumerate(projects):
+            for k in range(96):
+                count = (k + 3 * i) % (7 + i)
+                for n in range(count if (k + i) % (3 + i) else 0):
+                    created = now - (96 - k) * 900 + 31 * n
+                    started = created + 4
+                    jobs.append((name, created, started, started + 20 + 17 * i, "passed"))
+        return summarize(hours, now, projects, jobs)
+
     def do_GET(self):
         if not self.valid_host():
             return self.send("Invalid host", code=403)

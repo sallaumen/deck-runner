@@ -51,6 +51,7 @@ class HttpTest(unittest.TestCase):
             "/assets/dashboard.css",
             "/assets/dashboard.js",
             "/assets/controller.js",
+            "/assets/activity.js",
             "/assets/icon.svg",
         ]:
             code, headers, body = self.request(url)
@@ -61,6 +62,17 @@ class HttpTest(unittest.TestCase):
             self.request(headers={"Host": "not-the-station.invalid"})[0], 403
         )
         self.assertEqual(json.loads(self.request("/api/status")[2])["slots"], 5)
+
+    def test_activity_is_available_with_empty_history_and_rejects_unknown_periods(self):
+        for query, seconds in [("", 900), ("?hours=24", 3600)]:
+            code, _, raw = self.request("/api/activity" + query)
+            self.assertEqual(code, 200)
+            view = json.loads(raw)
+            self.assertEqual(view["bucket_seconds"], seconds)
+            self.assertEqual(view["end"] - view["start"], 24 * seconds)
+            self.assertEqual(view["projects"], [])
+        for query in ["?hours=0", "?hours=", "?hours=6&hours=24"]:
+            self.assertEqual(self.request("/api/activity" + query)[0], 400)
 
     def test_pause_and_resume_require_same_origin_and_valid_action_token(self):
         form = urllib.parse.urlencode({"token": server.TOKEN})

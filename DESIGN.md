@@ -10,6 +10,7 @@ A estação acompanha testes a uma distância de braço, em uma tela de 1280 × 
 | Marca | Traço de retorno aberto com um segundo traço âmbar. O mesmo desenho identifica o lançador no Plasma, a aba do navegador e o cabeçalho. |
 | Tipografia | Fonte de interface do sistema, com Inter quando disponível. Números e diagnósticos em fonte monoespaçada. Os recursos visuais são locais. |
 | Atualização | Consulta a cada quatro segundos e limite de oito segundos por leitura. Atualizações preservam o foco e a última leitura disponível. |
+| Gráficos por projeto | Duas séries temporais alinhadas em 24 intervalos, uma escala vertical comum a todos os projetos em cada gráfico e a mesma cor por cadastro nas linhas e na tabela de totais. |
 | Interação | Tela de acompanhamento com controles recolhidos. No modo de operação, filtro, pausa, logs e cancelamento têm nomes explícitos e foco visível. |
 
 Os valores de cor e tipografia estão em `web/dashboard.css`. Valide mudanças em 1280 × 800 e 375 × 812, com a fila vazia, ativa, pausada e sem conexão. Use `scripts/preview.py` para imagens públicas.
