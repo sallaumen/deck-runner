@@ -34,6 +34,13 @@ test(
       await page.getByRole("heading", { name: "estudio / atlas" }).waitFor();
       assert.equal(await page.locator("#usage").innerText(), "2 / 5");
       assert.equal(await page.locator("#history .history-row").count(), 4);
+      const segment = page.locator("#trend a").first();
+      await segment.click();
+      await page.locator("#dialog-log").waitFor();
+      await page.locator("#dialog-back").click();
+      await page.waitForFunction(
+        () => !!document.activeElement.closest("#trend"),
+      );
       const sample = await (
         await context.request.get(url.origin + "/api/status")
       ).json();
