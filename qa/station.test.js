@@ -449,6 +449,9 @@ test(
             owner: "Codex · " + "agente ".repeat(12),
           },
         }));
+      const completed = manyJobs(35, "passed", 900);
+      completed[0].state = "interrupted";
+      completed[1].state = "output_limit";
       const crowded = {
         ...sample,
         slots: 32,
@@ -458,7 +461,7 @@ test(
         jobs: [
           ...manyJobs(32, "running", 300),
           ...manyJobs(76, "queued", 600),
-          ...manyJobs(35, "passed", 900),
+          ...completed,
         ],
       };
       await page.unroute("**/api/status");
@@ -522,6 +525,21 @@ test(
             mode + " at " + w + "x" + h + " " + geometry,
           );
           assert.ok(geometry[5] <= h + 1);
+          const badges = page.locator("#history .history-row > b");
+          assert.ok(
+            await badges.evaluateAll((items) =>
+              items.every((el) => {
+                const text = document.createRange();
+                text.selectNodeContents(el);
+                return (
+                  text.getClientRects().length === 1 &&
+                  text.getBoundingClientRect().right <=
+                    el.getBoundingClientRect().right + 1
+                );
+              }),
+            ),
+            "Result labels must fit on one line at " + w,
+          );
           const chartEdges = await boxes([
             ".activity-x",
             ".activity-notice",
@@ -760,7 +778,8 @@ test(
               finished: null,
               activity: "Compiling 15 files (.ex)",
             }));
-          shown = { ...sample, observed_at: stamp, jobs };
+          // Sample inside the second, away from WebKit's timer rounding boundary.
+          shown = { ...sample, observed_at: stamp + 0.25, jobs };
           let connected = true,
             reads = 0;
           await page.unroute("**/api/status");

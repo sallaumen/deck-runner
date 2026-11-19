@@ -494,12 +494,12 @@ body:not(.display) .task-row {
   padding: 0 8px;
 }
 .history-row {
-  grid-template-columns: 69px minmax(0, 1fr) auto;
+  grid-template-columns: 100px minmax(0, 1fr) auto;
   gap: 8px;
 }
 .history-row > b {
   font: 600 11px var(--mono);
-  overflow-wrap: anywhere;
+  white-space: nowrap;
 }
 .history-row > b::before {
   content: "";
@@ -1180,9 +1180,6 @@ footer {
   }
   .toolbar label {
     width: 100%;
-  }
-  .history-row {
-    grid-template-columns: 65px minmax(0, 1fr) auto;
   }
   footer {
     flex-wrap: wrap;
