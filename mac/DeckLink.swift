@@ -106,7 +106,8 @@ while true {
         }
         lastBoot = boot
         guard let win = mainWindow(pid) else { return }
-        let streaming = (attribute(win,kAXTitleAttribute) as? String ?? "").hasSuffix("[Streaming]")
+        let title = attribute(win,kAXTitleAttribute) as? String ?? ""
+        let streaming = title == "Streaming Client" || title.hasSuffix("[Streaming]")
         if let until = deadline {
             if Date() > until { deadline = nil; report("window did not resume before timeout"); return }
             if streaming && pressed {

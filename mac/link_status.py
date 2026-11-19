@@ -12,16 +12,17 @@ def probe(app):
     with tempfile.TemporaryDirectory() as tmp:
         output = Path(tmp) / "status"
         output.touch()
-        subprocess.run(
+        process = subprocess.run(
             ["open", "-n", "-W", "-g", "--stdout", output, "-a", app, "--args", "--status"],
-            check=True, timeout=15,
+            timeout=15, capture_output=True,
         )
         raw = output.read_text().rstrip("\n")
     match = re.fullmatch(r"accessibility=(true|false) boot=(true|false) window=(.*)", raw, re.S)
     if not match:
+        process.check_returncode()
         raise RuntimeError("Deck Link não respondeu ao diagnóstico. Confira a instalação no Mac.")
     access, boot, title = match.groups()
-    return access == "true", boot == "true", title.endswith("[Streaming]")
+    return access == "true", boot == "true", title == "Streaming Client" or title.endswith("[Streaming]")
 
 
 def diagnose():
@@ -44,5 +45,5 @@ def diagnose():
     print(video)
     print("Retomada automática · " + ("serviço em execução" if resident else "serviço parado"))
     print("Acessibilidade · " + ("autorizada" if access else "pendente"))
-    print("Conexão com o Deck · " + ("disponível" if boot else "indisponível"))
+    print("Steam Remote Play no Deck · " + ("pronto" if boot else "aguardando o Steam ou o túnel"))
     return 0 if resident and access and boot else 1
