@@ -70,6 +70,14 @@ test(
       await page.locator("#request-plot polyline").first().waitFor();
       assert.equal(await page.locator("#activity-totals tr").count(), 4);
       assert.equal(await page.locator("#runtime-plot polyline").count(), 4);
+      await page
+        .getByRole("button", { name: "Ordenar por tempo de execução" })
+        .click();
+      assert.equal(
+        await page.locator("[aria-sort] button").getAttribute("data-order"),
+        "runtime",
+      );
+      await page.getByRole("button", { name: "Ordenar por envios" }).click();
       const firstColor = await page
         .locator("#request-plot polyline")
         .first()

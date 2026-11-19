@@ -176,8 +176,24 @@
             <thead>
               <tr>
                 <th scope="col">Projeto</th>
-                <th scope="col">Envios</th>
-                <th scope="col">Tempo</th>
+                <th scope="col" aria-sort="descending">
+                  <button
+                    type="button"
+                    data-order="count"
+                    aria-label="Ordenar por envios"
+                  >
+                    Envios
+                  </button>
+                </th>
+                <th scope="col">
+                  <button
+                    type="button"
+                    data-order="runtime"
+                    aria-label="Ordenar por tempo de execução"
+                  >
+                    Tempo
+                  </button>
+                </th>
               </tr>
             </thead>
             <tbody id="activity-totals"></tbody>
