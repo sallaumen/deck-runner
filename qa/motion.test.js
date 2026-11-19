@@ -35,6 +35,12 @@ test(
       const errors = [];
       page.on("pageerror", (error) => errors.push(error.message));
       await page.addInitScript(() => {
+        window.flights = 0;
+        const animate = Element.prototype.animate;
+        Element.prototype.animate = function (frames, options) {
+          if (options?.id === "bay-flight") window.flights++;
+          return animate.call(this, frames, options);
+        };
         window.mediaStarts = 0;
         HTMLMediaElement.prototype.play = () => {
           window.mediaStarts++;
@@ -109,18 +115,25 @@ test(
         await page.locator("#fx-launch-task").innerText(),
         jobs[1].meta.label,
       );
-      const pilot = page.locator("#summary .fx-pilot");
+      const pilot = page.locator(".bay-runner .fx-pilot");
       const stride = () =>
         pilot.evaluate((el) => getComputedStyle(el).animationName);
       assert.equal(await stride(), "working-stride");
+      assert.equal(await page.evaluate(() => window.flights), 1);
+      assert.equal(
+        await page.locator("#bay-job").getAttribute("href"),
+        "/logs/" + jobs[1].id,
+      );
       await update([
         jobs[0],
         { ...jobs[1], activity: "Compiling 7 files (.ex)" },
       ]);
       const latest = page.locator("#running .task-output");
       assert.ok(await latest.evaluate((el) => el.getAnimations().length > 0));
+      assert.equal(await page.evaluate(() => window.flights), 1);
       await update([job(1, "passed", -3), job(2, "passed")]);
-      assert.ok(await pilot.isHidden());
+      assert.equal(await stride(), "none");
+      assert.equal(await page.evaluate(() => window.flights), 2);
       await result.waitFor();
       assert.equal(await page.locator("#fx-verdict").innerText(), "Passou!");
       assert.equal(await page.locator("#fx-score").innerText(), "2");
@@ -209,8 +222,10 @@ test(
         );
       }
       const active = job(90, "running", 15);
+      const beforeReduced = await page.evaluate(() => window.flights);
       await update([...jobs, active]);
       assert.equal(await stride(), "none");
+      assert.equal(await page.evaluate(() => window.flights), beforeReduced);
       await update(
         jobs.map((j) =>
           j.id === active.id

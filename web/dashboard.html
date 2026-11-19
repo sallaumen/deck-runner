@@ -10,6 +10,7 @@
     <link rel="icon" href="/assets/icon.svg" type="image/svg+xml" />
     <link rel="stylesheet" href="/assets/dashboard.css" />
     <link rel="stylesheet" href="/assets/motion.css" />
+    <link rel="stylesheet" href="/assets/station.css" />
   </head>
   <body>
     <header>
@@ -28,6 +29,14 @@
     <main>
       <div class="overview">
         <div class="headline">
+          <div class="bay" aria-hidden="true">
+            <div class="bay-world">
+              <i class="bay-gate"></i>
+              <i class="bay-wave"></i>
+              <i class="bay-courier"></i>
+              <div class="bay-runner"><i class="fx-pilot"></i></div>
+            </div>
+          </div>
           <div class="notice-slot">
             <p
               class="message"
@@ -45,6 +54,11 @@
             <span id="summary-name">Conectando…</span>
             <span id="summary-more" hidden></span>
           </h1>
+          <div class="bay-caption">
+            <a id="bay-job" hidden
+              ><span id="bay-owner"></span><span id="bay-label"></span
+            ></a>
+          </div>
           <p class="metrics">
             <span>RAM livre <b id="ram">—</b></span
             ><span>Disco livre <b id="disk">—</b></span>
@@ -421,6 +435,7 @@
       <div class="dialog-actions"><button id="fx-back">Voltar</button></div>
     </dialog>
     <div id="fx-stage" aria-hidden="true" inert>
+      <div class="finish-field"></div>
       <div id="fx-result" class="fx-scene" hidden>
         <div id="fx-sparks"></div>
         <div class="fx-shell">

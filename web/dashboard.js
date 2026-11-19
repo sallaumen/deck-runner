@@ -102,6 +102,36 @@ function tickStopwatches() {
 
 function updateHeadline(active, queued) {
   const busy = active.length > 0 && data.alive && !offline;
+  const scene = document.querySelector(".bay");
+  scene.dataset.working = String(busy);
+  const featured = busy
+    ? active.at(-1)
+    : queued[0] ||
+      data.jobs.reduce(
+        (last, job) =>
+          Number.isFinite(job.finished) &&
+          (!last || job.finished > last.finished)
+            ? job
+            : last,
+        null,
+      );
+  const link = byId("bay-job");
+  link.hidden = !featured || offline || !data.alive;
+  if (!link.hidden) {
+    link.href = "/logs/" + encodeURIComponent(featured.id);
+    const caption = busy
+      ? featured.meta.owner
+      : (labels[featured.state] || "Na fila") + " · " + featured.meta.project;
+    byId("bay-owner").textContent = caption;
+    byId("bay-label").textContent = featured.meta.label;
+    link.title = [featured.meta.project, caption, featured.meta.label].join(
+      " · ",
+    );
+  }
+  scene.style.setProperty(
+    "--bay-ink",
+    (busy && projectColors.get(featured.meta.project)) || "#85f5e5",
+  );
   const names = [...new Set(active.map((job) => job.meta.project))];
   const summary = byId("summary-name");
   const extra = byId("summary-more");
