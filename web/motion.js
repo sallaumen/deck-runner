@@ -35,6 +35,9 @@
     const node = byId("fx-result");
     node.dataset.state = job.state;
     byId("fx-project").textContent = job.meta.project;
+    const ink=byId("fx-project-ink");
+    ink.hidden=!projectColors.has(job.meta.project);
+    ink.style.backgroundColor=projectColors.get(job.meta.project)||"";
     byId("fx-run-id").textContent = "#" + job.id.slice(-6);
     const counts = new Map();
     for (const entry of batch) counts.set(entry.state, (counts.get(entry.state)||0)+1);

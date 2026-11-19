@@ -67,3 +67,5 @@
 #fx-elapsed {flex:none;color:var(--ink);font-variant-numeric:tabular-nums;font-size:1.1em;}
 
 #fx-batch {margin:-3px 0 12px;font:600 13px var(--mono);color:#e1ebe4;}
+
+.fx-project-tag {display:flex;align-items:center;gap:8px;min-width:0;} #fx-project-ink {width:10px;height:10px;flex:none;transform:rotate(45deg);}
