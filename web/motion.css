@@ -57,3 +57,9 @@
   --ink:#ffcf86;--rim:#ce9d60;--plate:#312e29;
 }
 #fx-result:not([data-state="passed"]):not([data-state="failed"]) #fx-verdict {font-size:clamp(30px,4.7vw,60px);letter-spacing:-.055em}
+
+#fx-sparks {position:absolute;inset:0;z-index:1;pointer-events:none;}
+#fx-sparks i {position:absolute;top:45%;width:10px;height:10px;background:#ffd176;}
+#fx-sparks i:nth-child(-n+4) {left:12%;} #fx-sparks i:nth-child(n+5) {right:12%;}
+#fx-sparks .fx-star {width:19px;height:19px;background:#daffbc;clip-path:polygon(50% 0,60% 36%,100% 50%,63% 60%,50% 100%,40% 64%,0 50%,37% 40%);}
+#fx-sparks .fx-chip {width:6px;height:13px;}
