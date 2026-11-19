@@ -45,6 +45,32 @@ test(
           innerWidth,
           document.querySelector("footer").getBoundingClientRect().bottom,
         ]);
+      await page.locator("#request-plot polyline").first().waitFor();
+      assert.equal(await page.locator("#activity-totals tr").count(), 4);
+      assert.equal(await page.locator("#runtime-plot polyline").count(), 4);
+      const firstColor = await page
+        .locator("#request-plot polyline")
+        .first()
+        .getAttribute("stroke");
+      assert.equal(
+        firstColor,
+        await page
+          .locator("#runtime-plot polyline")
+          .first()
+          .getAttribute("stroke"),
+      );
+      const period = page.getByRole("combobox", {
+        name: "Período dos gráficos",
+      });
+      await period.selectOption("24");
+      await page.getByText("por 60 min", { exact: true }).waitFor();
+      await page.route("**/api/activity?hours=6", (route) => route.abort());
+      await period.selectOption("6");
+      await page.getByText(/Atividade indisponível/).waitFor();
+      assert.equal(await page.locator("#activity-totals tr").count(), 0);
+      await page.unroute("**/api/activity?hours=6");
+      await period.selectOption("24");
+      await page.locator("#request-plot polyline").first().waitFor();
       let [width, viewport, bottom] = await dimensions();
       assert.equal(width, viewport);
       assert.ok(
@@ -54,6 +80,12 @@ test(
       await page.getByRole("link", { name: "Abrir controles" }).click();
       await page.locator("#filter").selectOption("atlas");
       assert.equal(await page.locator("#running .job").count(), 1);
+      await page
+        .locator("#activity-totals th")
+        .getByText("atlas", { exact: true })
+        .waitFor();
+      assert.equal(await page.locator("#activity-totals tr").count(), 1);
+      assert.equal(await page.locator("#request-plot polyline").count(), 1);
       await page.getByText("Adicionar projeto", { exact: true }).click();
       await page.setViewportSize({ width: 375, height: 812 });
       [width, viewport] = await dimensions();

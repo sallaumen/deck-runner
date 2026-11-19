@@ -2,7 +2,7 @@
 
 Transforme um Steam Deck em uma bancada de testes para os projetos do seu Mac. Um agente envia o worktree em que está trabalhando, recebe o identificador da tarefa e acompanha o resultado. Na tela do Deck, você vê quem está usando a máquina, o que está rodando e quando uma vaga fica livre.
 
-![Painel do Deck Runner com duas tarefas fictícias em execução, ocupação, projetos e resultados](docs/station.png)
+![Painel do Deck Runner com duas tarefas fictícias em execução, ocupação, resultados e gráficos de uso por projeto](docs/station.png)
 
 *Prévia com projetos fictícios. O painel instalado mostra a fila real.*
 
@@ -51,6 +51,7 @@ O Deck admite até **cinco tarefas no total e três por projeto**. A fila també
 | Quero… | Onde encontrar |
 |---|---|
 | Cadastrar projetos Mix, Node, Python ou uma imagem própria | [Projetos e uso pelos agentes](docs/projects.md) |
+| Comparar envios e tempo de execução por projeto | [Gráficos da bancada](docs/operations.md#comparar-o-uso-por-projeto) |
 | Ler um log ao vivo e voltar à mesma tarefa pelo controle | [Usar o Deck sem teclado](docs/operations.md#usar-o-deck-sem-teclado) |
 | Conferir o vídeo no Mac e retomar a transmissão após um reinício | [Steam Link no Mac](docs/operations.md#retomar-a-transmissão-no-mac) |
 | Acompanhar o caminho do snapshot até o resultado | [Arquitetura e estados](docs/architecture.md) |

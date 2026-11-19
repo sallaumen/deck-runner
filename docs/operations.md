@@ -27,6 +27,14 @@ Ao entrar na área de trabalho do Plasma, o atalho de inicialização abre **Dec
 
 No Deck ou no painel do Mac, selecione o nome de uma tarefa na tela de acompanhamento para ler o log. A saída acompanha as novas linhas enquanto você estiver no fim. Ao rolar para cima, o painel mantém sua posição. **Ir ao fim** volta a acompanhar a execução. Quando o teste termina, o painel faz a última leitura e mostra o resultado. **Voltar** devolve o foco à tarefa.
 
+## Comparar o uso por projeto
+
+Na faixa inferior, **Envios de testes** conta cada tarefa uma vez, na hora em que entrou na fila. Uma suíte com 27 casos conta como um envio. **Tempo de execução** soma os minutos em que as tarefas de cada projeto ocuparam vagas, incluindo a preparação do ambiente. Duas tarefas que rodam por dez minutos ao mesmo tempo somam vinte minutos. A espera na fila fica fora dessa soma.
+
+A janela de **6 horas** usa intervalos de 15 minutos. Em **24 horas**, cada intervalo tem uma hora. Os gráficos têm o mesmo eixo de tempo e cada projeto mantém a sua cor. A tabela mostra os totais, ordenados por envios. Com o mouse, pare sobre um intervalo para ver os valores das linhas. Na tela de controles, o filtro de projeto também se aplica aos gráficos.
+
+A leitura é atualizada a cada minuto com o histórico dos projetos cadastrados, incluindo tarefas em andamento e projetos com zero envios no período.
+
 ## Retomar a transmissão no Mac
 
 Emparelhe o Steam Link, escolha o Desktop como destino da transmissão e deixe a janela aberta. O componente opcional **Deck Link** observa a inicialização do Deck pelo túnel local. Depois de um reinício, ele procura o nome do computador emparelhado e o botão de iniciar na janela do Steam Link. O Steam Link pode recriar a janela de vídeo durante a conexão. O Deck Link reaplica a posição e o tamanho da transmissão anterior. Fechar o aplicativo Steam Link encerra o monitoramento daquela sessão. A fila funciona enquanto a transmissão está fechada.

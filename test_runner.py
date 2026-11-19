@@ -10,6 +10,7 @@ import time
 import unittest
 from unittest.mock import patch
 
+import activity
 import client
 import server
 
@@ -71,6 +72,36 @@ class QueueTest(unittest.TestCase):
         with patch.object(server, "available_memory", return_value=3 * server.GIB):
             self.assertEqual(server.claim(), "a" * 12)
             self.assertIsNone(server.claim())
+
+    def test_activity_uses_full_history_and_splits_worker_time_at_bucket_edges(self):
+        end = 24 * 3600
+        start = end - 6 * 3600
+        width = 900
+        with contextlib.closing(server.db()) as c, c:
+            def insert(name, state, created, started=None, finished=None):
+                c.execute("INSERT INTO jobs(id,meta,state,created,started,finished) VALUES(hex(randomblob(6)), ?, ?, ?, ?, ?)",
+                          (json.dumps({"project": name}), state, created, started, finished))
+
+            for _ in range(115):
+                insert("catalogue", "passed", start, start, start + 1)
+            # Submitted yesterday, but its last 70 seconds used a slot in this window.
+            insert("catalogue", "passed", start - 3600, start - 40, start + 70)
+            insert("catalogue", "failed", start + 800, start + 899, start + 925)
+            insert("catalogue", "running", end - 80, end - 30)
+            insert("catalogue", "cancelled", start + width)
+            insert("catalogue", "queued", end)
+            insert("catalogue", "passed", start - 999, start - 800, start)
+            insert("archived", "passed", start + 100, start + 101, end - 1)
+            result = activity.from_database(c, 6, end)
+        self.assertEqual(len(result["projects"]), 1)
+        row = result["projects"][0]
+        self.assertEqual(result["bucket_seconds"], width)
+        self.assertEqual(len(row["requests"]), 24)
+        self.assertEqual(row["requests"][:2], [116, 1])
+        self.assertEqual(sum(row["requests"]), 118)
+        self.assertEqual(row["seconds"][:2], [186, 25])
+        self.assertEqual(row["seconds"][-1], 30)
+        self.assertEqual(sum(row["seconds"]), 241)
 
     def test_status_keeps_the_last_result_of_a_quiet_project(self):
         with contextlib.closing(server.db()) as c, c:

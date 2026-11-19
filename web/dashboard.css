@@ -707,3 +707,191 @@ footer {
     order: 1;
   }
 }
+
+.project-activity {
+  display: grid;
+  grid-template-columns: minmax(225px, 0.95fr) repeat(2, minmax(0, 1.38fr));
+  gap: 0 clamp(16px, 1.8vw, 28px);
+  align-items: start;
+  margin-top: 16px;
+  padding: 10px 16px 12px;
+  border: 1px solid var(--edge);
+  border-radius: 10px;
+  background: var(--plate);
+}
+.activity-heading,
+.activity-figure figcaption,
+.activity-x {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 8px;
+}
+.activity-heading {
+  align-items: center;
+  min-height: 35px;
+}
+.activity-heading h2,
+.activity-figure strong {
+  font-size: 15px;
+  font-weight: 650;
+}
+#activity-period {
+  min-height: 34px;
+  padding: 2px 6px;
+  font-size: 12px;
+  color: var(--muted);
+}
+.activity-key table {
+  width: 100%;
+  border-collapse: collapse;
+  font: 12px/1.5 var(--mono);
+  font-variant-numeric: tabular-nums;
+}
+.activity-key th,
+.activity-key td {
+  padding: 0 0 0 8px;
+  text-align: right;
+  white-space: nowrap;
+}
+.activity-key th:first-child,
+.activity-key td:first-child {
+  padding-left: 0;
+  text-align: left;
+}
+.activity-key thead th {
+  font-size: 10px;
+  font-weight: 500;
+  color: var(--muted);
+}
+.activity-key tbody th {
+  white-space: normal;
+  overflow-wrap: anywhere;
+  font-weight: 500;
+}
+.activity-key th svg {
+  margin-right: 6px;
+  vertical-align: middle;
+}
+.activity-figure {
+  min-width: 0;
+  margin: 0;
+  padding: 5px 0 0 clamp(14px, 1.5vw, 24px);
+  border-left: 1px solid var(--line);
+}
+.activity-figure figcaption {
+  margin-bottom: 6px;
+}
+.activity-unit,
+.activity-x,
+.activity-y {
+  color: var(--muted);
+  font: 11px/1.2 var(--mono);
+  font-variant-numeric: tabular-nums;
+}
+.activity-plot {
+  display: grid;
+  grid-template-columns: max-content minmax(0, 1fr);
+  gap: 2px 6px;
+  min-height: 86px;
+}
+.activity-plot > svg {
+  display: block;
+  width: 100%;
+  height: 72px;
+  overflow: visible;
+}
+.activity-grid {
+  fill: none;
+  stroke: var(--edge);
+  stroke-dasharray: 2 4;
+  stroke-width: 1;
+}
+.activity-y {
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  align-items: end;
+  height: 72px;
+}
+.activity-x {
+  grid-column: 2;
+}
+.activity-empty {
+  grid-column: 1/-1;
+  align-self: center;
+  color: var(--muted);
+  font-size: 13px;
+}
+#activity-status {
+  grid-column: 1/-1;
+  color: var(--warm);
+  font-size: 12px;
+}
+@media (min-width: 900px) and (max-height: 850px) {
+  .display .overview {
+    padding-block: 14px;
+  }
+  .display .project {
+    padding-block: 8px;
+  }
+  .display .project-activity {
+    margin-top: 11px;
+  }
+}
+@media (max-width: 850px) {
+  .project-activity {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    row-gap: 14px;
+  }
+  .activity-key {
+    grid-column: 1/-1;
+  }
+  .activity-figure {
+    padding: 0;
+    border: 0;
+  }
+  #activity-period {
+    min-height: 44px;
+  }
+}
+@media (max-width: 540px) {
+  .project-activity {
+    grid-template-columns: minmax(0, 1fr);
+    padding: 14px;
+  }
+  .activity-figure {
+    padding-top: 12px;
+    border-top: 1px solid var(--line);
+  }
+}
+@media (min-width: 900px) and (max-height: 850px) {
+  .display .history-row {
+    padding-block: 4px;
+  }
+  .display .bar {
+    padding-block: 6px;
+    min-height: 36px;
+  }
+  .display .left,
+  .display .side {
+    gap: 10px;
+  }
+  .display footer {
+    margin-block: 9px;
+  }
+}
+
+/* With the queue idle, use the spare display height for easier reading at a distance. */
+@media (min-width: 900px) and (min-height: 780px) {
+  .display[data-state="idle"] .activity-plot > svg,
+  .display[data-state="idle"] .activity-y {
+    height: 96px;
+  }
+  .display[data-state="idle"] .activity-key tbody :is(th, td) {
+    padding-block: 2px;
+  }
+  .display[data-state="idle"] #activity-period {
+    min-height: 44px;
+  }
+}

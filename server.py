@@ -2,6 +2,7 @@
 """Multi-project test executor. SSH is the submission boundary."""
 
 from collections import Counter
+import activity
 import argparse
 import contextlib
 import fcntl
@@ -70,6 +71,9 @@ def db():
     c.execute("""CREATE INDEX IF NOT EXISTS jobs_project_result
                  ON jobs(json_extract(meta,'$.project'), finished DESC, id DESC)
                  WHERE finished IS NOT NULL""")
+    c.execute("CREATE INDEX IF NOT EXISTS jobs_created ON jobs(created)")
+    c.execute("CREATE INDEX IF NOT EXISTS jobs_finished ON jobs(finished) WHERE finished IS NOT NULL")
+    c.execute("CREATE INDEX IF NOT EXISTS jobs_running_start ON jobs(started) WHERE state='running'")
     return c
 
 
@@ -716,6 +720,11 @@ class Handler(http.server.BaseHTTPRequestHandler):
         port = self.server.server_port
         return self.headers.get("Host") in (f"127.0.0.1:{port}", f"localhost:{port}")
 
+    def activity(self, hours):
+        with contextlib.closing(db()) as connection:
+            connection.execute("BEGIN")
+            return activity.from_database(connection, hours, int(time.time()))
+
     def do_GET(self):
         if not self.valid_host():
             return self.send("Invalid host", code=403)
@@ -726,6 +735,7 @@ class Handler(http.server.BaseHTTPRequestHandler):
                 "/assets/dashboard.css",
                 "/assets/dashboard.js",
                 "/assets/controller.js",
+                "/assets/activity.js",
                 "/assets/icon.svg",
             ):
                 asset = assets / path.split("/")[-1]
@@ -735,6 +745,12 @@ class Handler(http.server.BaseHTTPRequestHandler):
                     ".svg": "image/svg+xml",
                 }[asset.suffix]
                 return self.send(asset.read_bytes(), mime + "; charset=utf-8")
+            if path == "/api/activity":
+                query = urllib.parse.parse_qs(urllib.parse.urlsplit(self.path).query, keep_blank_values=True)
+                values = query.get("hours", ["6"])
+                if len(values) != 1 or values[0] not in tuple(map(str, activity.PERIODS)):
+                    return self.send("Unsupported period", code=400)
+                return self.send(json.dumps(self.activity(int(values[0]))), "application/json")
             if path == "/api/boot":
                 return self.send(Path("/proc/sys/kernel/random/boot_id").read_text().strip(), "text/plain")
             if path == "/api/status":
