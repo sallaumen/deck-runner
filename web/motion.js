@@ -162,9 +162,36 @@
   });
   for (const panel of panels) dialogChanges.observe(panel,{attributes:true,attributeFilter:["open"]});
 
+  let recentInstance;
+  const recent=[];
+  function drawRecent() {
+    byId("fx-recent-count").textContent=String(recent.length);
+    byId("fx-no-events").hidden=recent.length>0;
+    if (!byId("fx-recent").open) return;
+    const list=byId("fx-recent-list");
+    list.replaceChildren(...recent.map(item=>{
+      const row=document.createElement("li"),when=document.createElement("time"),what=document.createElement("span");
+      when.textContent=clock(item.at);what.textContent=item.text;row.append(when,what);return row;
+    }));
+  }
+  function remember(jobs) {
+    for(const job of [...jobs].sort((a,b)=>(a.finished||a.started||a.created)-(b.finished||b.started||b.created))) {
+      const verb={running:"Começou",queued:"Na fila"}[job.state] || labels[job.state] || job.state;
+      recent.unshift({at:job.finished||job.started||job.created,text:verb+" · "+job.meta.project+" · "+job.meta.label});
+    }
+    recent.length=Math.min(12,recent.length);
+    drawRecent();
+  }
+  document.addEventListener("station-resync",()=>{
+    if(recentInstance!==data?.instance) {recentInstance=data?.instance;recent.length=0;drawRecent();}
+  });
+  byId("fx-recent").addEventListener("toggle",drawRecent);
+
   document.addEventListener("station-change", event => {
-    if (document.hidden || !event.detail || mode!=="arcade" || document.querySelector("dialog[open]")) return;
+    if (document.hidden || !event.detail) return;
     const { jobs, previous } = event.detail;
+    remember(jobs);
+    if (mode!=="arcade" || document.querySelector("dialog[open]")) return;
     const busy=j=>j.state==="running" || j.state==="queued";
     if (!reduced.matches && !data.paused && data.alive && previous.jobs.some(busy) && !data.jobs.some(busy)) {
       const slots=Array.from(byId("slots").children);
