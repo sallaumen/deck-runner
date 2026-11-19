@@ -133,7 +133,7 @@ class Preview(Handler):
                 "application/json",
             )
         if path == "/api/status":
-            return self.send(json.dumps(self.server.sample), "application/json")
+            return self.send(json.dumps({**self.server.sample, "observed_at": time.time()}), "application/json")
         if path.startswith(("/logs/", "/result/")):
             return self.send(
                 "Demonstração local. Este resultado é fictício.",
