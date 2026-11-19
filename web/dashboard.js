@@ -189,25 +189,30 @@ function render() {
       recent.length +
       " passaram"
     : "Sem resultados";
-  writeRows("trend", recent
-    .map((j) => {
-      const description = [
-        j.meta.project,
-        j.meta.label,
-        labels[j.state] || j.state,
-        resultTime(j.finished),
-      ].join(" · ");
-      return (
-        '<span role="listitem" data-result-id="' + esc(j.id) + '" class="' +
-        esc(j.state) +
-        '" aria-label="' +
-        esc(description) +
-        '" title="' +
-        esc(description) +
-        '"></span>'
-      );
-    })
-    .join(""));
+  writeRows(
+    "trend",
+    recent
+      .map((j) => {
+        const description = [
+          j.meta.project,
+          j.meta.label,
+          labels[j.state] || j.state,
+          resultTime(j.finished),
+        ].join(" · ");
+        return (
+          '<span role="listitem" data-result-id="' +
+          esc(j.id) +
+          '" class="' +
+          esc(j.state) +
+          '" aria-label="' +
+          esc(description) +
+          '" title="' +
+          esc(description) +
+          '"></span>'
+        );
+      })
+      .join(""),
+  );
   if (!workChosen && !byId("work-space").contains(document.activeElement))
     activate(!current.length && waiting.length ? "waiting" : "running");
   byId("used-count").textContent = String(active.length);
@@ -423,7 +428,8 @@ async function refresh() {
     lastRead = Date.now() / 1000;
     offline = false;
     render();
-    if (!previous || previous.instance !== data.instance) document.dispatchEvent(new Event("station-resync"));
+    if (!previous || previous.instance !== data.instance)
+      document.dispatchEvent(new Event("station-resync"));
     signalChanges(previous?.instance === data.instance ? previous : null);
     resync = document.hidden;
     byId("connection").textContent = data.alive
@@ -503,9 +509,10 @@ function signalChanges(previous) {
     : data.jobs;
   for (const job of data.jobs) {
     known.delete(job.id);
-    known.set(job.id,job.state);
+    known.set(job.id, job.state);
   }
-  while (known.size > Math.max(512,data.jobs.length)) known.delete(known.keys().next().value);
+  while (known.size > Math.max(512, data.jobs.length))
+    known.delete(known.keys().next().value);
   if (!changed.length) {
     if (!previous) byId("live-note").textContent = "";
     return;
@@ -531,7 +538,10 @@ function signalChanges(previous) {
   note.title = latest.meta.label;
   note.dataset.state = latest.state;
   if (!previous) return;
-  if (document.documentElement.dataset.effects!=="off" && !matchMedia("(prefers-reduced-motion: reduce)").matches) {
+  if (
+    document.documentElement.dataset.effects !== "off" &&
+    !matchMedia("(prefers-reduced-motion: reduce)").matches
+  ) {
     const accent = ["failed", "disk_limit", "timeout", "output_limit"].includes(
       latest.state,
     )
@@ -559,7 +569,9 @@ function signalChanges(previous) {
         );
     }
   }
-  document.dispatchEvent(new CustomEvent("station-change", {detail: { jobs: changed, previous }}));
+  document.dispatchEvent(
+    new CustomEvent("station-change", { detail: { jobs: changed, previous } }),
+  );
 }
 function fromStream() {
   if (pending) retryRefresh = true;
