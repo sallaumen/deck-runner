@@ -26,74 +26,100 @@
     <main>
       <div class="overview">
         <div class="headline">
-          <p class="kicker">Bancada de testes</p>
           <h1 id="summary">Conectando…</h1>
           <p class="metrics">
             <span>RAM livre <b id="ram">—</b></span
             ><span>Disco livre <b id="disk">—</b></span>
           </p>
+          <p class="message" id="message" role="status"></p>
         </div>
         <div class="capacity">
           <div class="capacity-title">
             <h2>Ocupação do Deck</h2>
+            <strong id="usage">—</strong>
             <button id="edit-limits" aria-haspopup="dialog" disabled>
               Ajustar vagas
             </button>
-            <strong id="usage">—</strong>
           </div>
           <div class="slots" id="slots" aria-hidden="true"></div>
           <p id="policy"></p>
         </div>
       </div>
-      <p class="message" id="message" role="status"></p>
       <div class="toolbar hide-display">
         <label for="filter"
           >Projeto
           <select id="filter">
             <option value="">Todos os projetos</option>
           </select></label
-        ><button id="pause" disabled>Pausar fila</button>
+        >
+        <button id="enroll">Adicionar projeto</button>
+        <button id="pause" disabled>Pausar fila</button>
       </div>
       <div class="layout">
-        <div class="left">
-          <section class="block live">
-            <div class="bar">
-              <h2>Em execução</h2>
-              <span class="count" id="runningCount">—</span>
+        <section class="board work" aria-label="Tarefas">
+          <div class="board-head">
+            <div class="views" role="group" aria-label="Lista de tarefas">
+              <button
+                data-view="running"
+                aria-controls="running"
+                aria-pressed="true"
+              >
+                Em execução <span id="runningCount">—</span>
+              </button>
+              <button
+                data-view="waiting"
+                aria-controls="waiting"
+                aria-pressed="false"
+              >
+                Na fila <span id="waitingCount">—</span>
+              </button>
             </div>
+            <div
+              class="pager"
+              hidden
+              id="work-pages"
+              aria-label="Páginas de tarefas"
+            ></div>
+          </div>
+          <div class="list-space" id="work-space">
             <div id="running"></div>
-          </section>
-          <section class="block">
-            <div class="bar"><h2 id="historyTitle">Últimos resultados</h2></div>
+            <div id="waiting" hidden></div>
+          </div>
+        </section>
+        <section class="board archive" aria-label="Resultados e projetos">
+          <div class="board-head">
+            <div
+              class="views"
+              role="group"
+              aria-label="Lista de resultados ou projetos"
+            >
+              <button
+                data-view="history"
+                aria-controls="history"
+                aria-pressed="true"
+              >
+                Resultados
+              </button>
+              <button
+                data-view="projects"
+                aria-controls="projects"
+                aria-pressed="false"
+              >
+                Projetos <span id="projectCount">—</span>
+              </button>
+            </div>
+            <div
+              class="pager"
+              hidden
+              id="archive-pages"
+              aria-label="Páginas de resultados ou projetos"
+            ></div>
+          </div>
+          <div class="list-space" id="archive-space">
             <div id="history"></div>
-            <button class="hide-display" hidden id="more">
-              Ver mais resultados
-            </button>
-          </section>
-        </div>
-        <div class="side">
-          <section class="block">
-            <div class="bar">
-              <h2>Projetos</h2>
-              <span id="projectCount" class="count">—</span>
-            </div>
-            <div id="projects"></div>
-            <details class="hide-display enrollment">
-              <summary>Adicionar projeto</summary>
-              <p>
-                No Mac, abra <strong>Adicionar projeto ao Deck</strong> na Mesa
-                e selecione a pasta do repositório em <code>~/projects</code>.
-              </p>
-            </details>
-          </section>
-          <section class="block">
-            <div class="bar">
-              <h2>Na fila</h2>
-              <span class="count" id="waitingCount">—</span>
-            </div>
-            <div id="waiting"></div>
-          </section>
-          <section class="trend">
+            <div id="projects" hidden></div>
+          </div>
+          <div class="trend">
             <div class="trend-title">
               <h2>Sequência recente</h2>
               <span id="trendSummary"></span>
@@ -103,8 +129,8 @@
               role="list"
               aria-label="Resultados do mais antigo ao mais recente"
             ></div>
-          </section>
-        </div>
+          </div>
+        </section>
       </div>
       <section
         class="project-activity"
@@ -113,7 +139,7 @@
       >
         <div class="activity-key">
           <div class="activity-heading">
-            <h2>Por projeto</h2>
+            <h2>Atividade por projeto</h2>
             <select id="activity-period" aria-label="Período dos gráficos">
               <option value="6">Últimas 6 h</option>
               <option value="24">Últimas 24 h</option>
@@ -129,6 +155,12 @@
             </thead>
             <tbody id="activity-totals"></tbody>
           </table>
+          <div
+            class="pager"
+            hidden
+            id="legend-pages"
+            aria-label="Páginas de totais por projeto"
+          ></div>
         </div>
         <figure class="activity-figure" aria-labelledby="requests-title">
           <figcaption>
@@ -152,6 +184,16 @@
       <span id="pad-help" hidden>Direcional move · A seleciona · B volta</span>
       <time id="updated"></time>
     </footer>
+    <dialog id="enroll-dialog" aria-labelledby="enroll-title">
+      <h2 id="enroll-title">Adicionar projeto</h2>
+      <p>
+        No Mac, abra <strong>Adicionar projeto ao Deck</strong> na Mesa e
+        selecione a pasta do repositório em <code>~/projects</code>.
+      </p>
+      <form method="dialog" class="dialog-actions">
+        <button>Voltar</button>
+      </form>
+    </dialog>
     <dialog id="limits-dialog" aria-labelledby="limits-title">
       <h2 id="limits-title">Ajustar vagas</h2>
       <p class="limit-intro">Quantos testes podem rodar ao mesmo tempo?</p>

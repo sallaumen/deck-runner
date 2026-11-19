@@ -8,7 +8,7 @@ import { webkit } from "playwright";
 
 test(
   "station, controls, resource limits and reconnection",
-  { timeout: 50000 },
+  { timeout: 90000 },
   async () => {
     const fixture = fileURLToPath(
       new URL("../scripts/preview.py", import.meta.url),
@@ -137,7 +137,13 @@ test(
         .waitFor();
       assert.equal(await page.locator("#activity-totals tr").count(), 1);
       assert.equal(await page.locator("#request-plot polyline").count(), 1);
-      await page.getByText("Adicionar projeto", { exact: true }).click();
+      await page
+        .getByRole("button", { name: "Adicionar projeto", exact: true })
+        .click();
+      await page
+        .locator("#enroll-dialog")
+        .getByRole("button", { name: "Voltar" })
+        .click();
       await page.setViewportSize({ width: 375, height: 812 });
       [width, viewport] = await dimensions();
       assert.equal(width, viewport);
@@ -333,6 +339,123 @@ test(
         logPath,
       );
       assert.equal(await page.locator("#station-dialog").isVisible(), false);
+      // Exercise each list at higher concurrency and after a Deck display resize.
+      const repeat = (n, fn) => Array.from({ length: n }, (_, i) => fn(i));
+      const names = repeat(35, (i) => "projeto-" + i + "-" + "x".repeat(35));
+      const manyJobs = (n, state, base) =>
+        repeat(n, (i) => ({
+          ...job,
+          id: (base + i).toString(16).padStart(12, "0"),
+          state,
+          finished: state === "passed" ? Date.now() / 1000 - i : null,
+          meta: {
+            ...job.meta,
+            project: names[i % names.length],
+            label: state + " tarefa " + i + " " + "texto longo ".repeat(8),
+            owner: "Codex · " + "agente ".repeat(12),
+          },
+        }));
+      const crowded = {
+        ...sample,
+        slots: 32,
+        project_slots: 16,
+        projects: names.map((name) => ({ name })),
+        reason: "Aguardando memória para a próxima tarefa.",
+        jobs: [
+          ...manyJobs(32, "running", 300),
+          ...manyJobs(76, "queued", 600),
+          ...manyJobs(35, "passed", 900),
+        ],
+      };
+      await page.unroute("**/api/status");
+      await page.route("**/api/status", (route) =>
+        route.fulfill({ json: crowded }),
+      );
+      const series = await (
+        await context.request.get(url.origin + "/api/activity?hours=6")
+      ).json();
+      series.projects = names.map((name, i) => ({
+        ...series.projects[0],
+        name,
+        color: i,
+      }));
+      await page.route("**/api/activity?hours=*", (route) =>
+        route.fulfill({ json: series }),
+      );
+      for (const mode of ["?station=1&screen=1", "?station=1"]) {
+        await page.goto(url.origin + "/" + mode);
+        await page.locator("#usage").getByText("32 / 32").waitFor();
+        for (const [w, h] of [
+          [1280, 800],
+          [1152, 720],
+          [1024, 640],
+          [800, 500],
+        ]) {
+          await page.setViewportSize({ width: w, height: h });
+          await page.evaluate(
+            () =>
+              new Promise((resolve) =>
+                requestAnimationFrame(() => requestAnimationFrame(resolve)),
+              ),
+          );
+          const geometry = await page.evaluate(() => {
+            const sectionFits = (id) => {
+              const box = document.getElementById(id);
+              return [
+                ...box.querySelectorAll(".task-row,.project,.history-row"),
+              ]
+                .filter((e) => e.offsetHeight)
+                .every(
+                  (e) =>
+                    e.getBoundingClientRect().bottom <=
+                    box.getBoundingClientRect().bottom + 1,
+                );
+            };
+            window.scrollTo(0, 10000);
+            return [
+              document.documentElement.scrollHeight,
+              document.documentElement.scrollWidth,
+              scrollY,
+              sectionFits("work-space"),
+              sectionFits("archive-space"),
+              document.querySelector("footer").getBoundingClientRect().bottom,
+            ];
+          });
+          assert.deepEqual(
+            geometry.slice(0, 5),
+            [h, w, 0, true, true],
+            mode + " at " + w + "x" + h + " " + geometry,
+          );
+          assert.ok(geometry[5] <= h + 1);
+        }
+      }
+      await page.setViewportSize({ width: 1280, height: 800 });
+      for (const [view, id, kind, count] of [
+        ["waiting", "work-pages", ".queued", 76],
+        ["running", "work-pages", ".job", 32],
+        ["projects", "archive-pages", ".project", 35],
+        ["history", "archive-pages", ".history-row", 35],
+      ]) {
+        await page.locator('[data-view="' + view + '"]').click();
+        const next = page.locator("#" + id + " button").last(),
+          seen = new Set();
+        for (let p = 0; p < count; p++) {
+          for (const t of await page
+            .locator("#" + view + " " + kind)
+            .allTextContents())
+            seen.add(t);
+          if ((await next.getAttribute("aria-disabled")) === "true") break;
+          await next.click();
+        }
+        assert.equal(seen.size, count, view + " exposes all pages");
+      }
+      const legendNext = page.locator("#legend-pages button").last();
+      const firstLegend = await page.locator("#activity-totals").innerText();
+      await legendNext.click();
+      assert.notEqual(
+        await page.locator("#activity-totals").innerText(),
+        firstLegend,
+      );
       assert.deepEqual(errors, []);
     } finally {
       try {

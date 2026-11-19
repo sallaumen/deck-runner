@@ -4,7 +4,6 @@ if (display) {
   document.body.classList.add("display");
   byId("switch").href = "/";
   byId("switch").textContent = "Abrir controles";
-  byId("historyTitle").textContent = "Último resultado por projeto";
 }
 const esc = (v) =>
   String(v ?? "").replace(
@@ -46,8 +45,117 @@ const bars = (used, total) =>
     (_, i) => '<i class="' + (i < used ? "used" : "") + '"></i>',
   ).join("");
 let data,
+  lastRead,
   pending = false,
-  historyLimit = 8;
+  offline = false;
+const projectColors = new Map();
+function projectDot(name) {
+  const ink = projectColors.get(name);
+  return ink
+    ? '<svg class="project-dot" width="9" height="9" viewBox="0 0 10 10" aria-hidden="true"><circle cx="5" cy="5" r="4" fill="' +
+        esc(ink) +
+        '"/></svg>'
+    : "";
+}
+function writeRows(id, html) {
+  const box = byId(id);
+  if (box.lastMarkup === html) return;
+  const focus = document.activeElement;
+  const restore =
+    box.contains(focus) && (focus.getAttribute("href") || focus.dataset.cancel);
+  box.innerHTML = html;
+  box.lastMarkup = html;
+  if (restore) {
+    const next = [...box.querySelectorAll("a,button")].find(
+      (el) => (el.getAttribute("href") || el.dataset.cancel) === restore,
+    );
+    (next || document.querySelector('[data-view="' + id + '"]'))?.focus({
+      preventScroll: true,
+    });
+  }
+}
+const pages = new Map();
+let workView = "running",
+  archiveView = "history",
+  workChosen = false;
+const panelsFit = matchMedia("(min-width: 720px) and (min-aspect-ratio: 6/5)");
+
+function showChange(view) {
+  if (!matchMedia("(prefers-reduced-motion: reduce)").matches) {
+    byId(view).animate([{ opacity: 0.68 }, { opacity: 1 }], { duration: 130 });
+  }
+}
+function pager(id, redraw) {
+  const nav = byId(id);
+  const label = nav.getAttribute("aria-label");
+  nav.innerHTML =
+    '<button type="button" aria-label="Página anterior · ' +
+    label +
+    '"><i class="chevron prev"></i></button><span aria-live="polite"></span><button type="button" aria-label="Próxima página · ' +
+    label +
+    '"><i class="chevron"></i></button>';
+  const [prev, next] = nav.querySelectorAll("button");
+  const counter = nav.querySelector("span");
+  let key, last;
+  function turn(delta) {
+    const n = (pages.get(key) || 0) + delta;
+    if (n < 0 || n > last) return;
+    pages.set(key, n);
+    redraw();
+    showChange(key);
+  }
+  prev.onclick = () => turn(-1);
+  next.onclick = () => turn(1);
+  return (items, size, view) => {
+    key = view;
+    last = Math.max(0, Math.ceil(items.length / size) - 1);
+    const page = Math.min(pages.get(key) || 0, last);
+    pages.set(key, page);
+    nav.hidden = !last;
+    if (last) {
+      const text = page + 1 + "/" + (last + 1);
+      if (counter.textContent !== text) counter.textContent = text;
+      prev.setAttribute("aria-disabled", page === 0);
+      next.setAttribute("aria-disabled", page === last);
+    }
+    return items.slice(page * size, (page + 1) * size);
+  };
+}
+const workPage = pager("work-pages", render);
+const archivePage = pager("archive-pages", render);
+function room(id) {
+  if (!panelsFit.matches) return 4;
+  const box = byId(id);
+  return Math.max(
+    1,
+    Math.floor(
+      box.clientHeight /
+        parseFloat(getComputedStyle(box).getPropertyValue("--row-height")),
+    ),
+  );
+}
+function activate(view, manual = false) {
+  if (view === "running" || view === "waiting") {
+    workView = view;
+    if (manual) workChosen = true;
+  } else archiveView = view;
+  for (const button of document.querySelectorAll("[data-view]")) {
+    const name = button.dataset.view;
+    const visible = name === workView || name === archiveView;
+    button.setAttribute("aria-pressed", visible);
+    byId(name).hidden = !visible;
+  }
+}
+document.querySelectorAll("[data-view]").forEach((button) => {
+  button.onclick = () => {
+    const view = button.dataset.view;
+    const changed = button.getAttribute("aria-pressed") !== "true";
+    activate(view, true);
+    if (data) render();
+    if (changed) showChange(view);
+  };
+});
+byId("enroll").onclick = () => byId("enroll-dialog").showModal();
 function render() {
   const active = data.jobs
     .filter((j) => j.state === "running")
@@ -100,7 +208,8 @@ function render() {
       );
     })
     .join("");
-  byId("running").classList.toggle("many", display && current.length >= 2);
+  if (!workChosen && !byId("work-space").contains(document.activeElement))
+    activate(!current.length && waiting.length ? "waiting" : "running");
   byId("usage").textContent = active.length + " / " + data.slots;
   byId("runningCount").textContent = current.length;
   document.body.dataset.state = data.paused
@@ -128,120 +237,179 @@ function render() {
   byId("pause").textContent = data.paused ? "Retomar fila" : "Pausar fila";
   byId("projectCount").textContent = allNames.length;
   byId("waitingCount").textContent = waiting.length;
-  byId("projects").innerHTML = allNames
-    .map((n) => {
-      const count = active.filter((j) => j.meta.project === n).length;
-      return (
-        '<div class="project"><span>' +
-        esc(n) +
-        '</span><span class="legend"><small>' +
-        count +
-        "/" +
-        data.project_slots +
-        '</small><span class="meter" aria-hidden="true">' +
-        bars(count, data.project_slots) +
-        "</span></span></div>"
-      );
-    })
-    .join("");
+  const projectsToShow = new Set(allNames);
+  const results = display
+    ? history.filter((j) => projectsToShow.delete(j.meta.project))
+    : history;
+  const workBox = byId("work-space");
+  workBox.classList.toggle(
+    "spacious",
+    panelsFit.matches &&
+      workView === "running" &&
+      current.length > 0 &&
+      current.length <= 3 &&
+      workBox.clientHeight >= current.length * 98,
+  );
+  const activeRows = workPage(
+    workView === "running" ? current : waiting,
+    room("work-space"),
+    workView,
+  );
+  const sideRows = archivePage(
+    archiveView === "history" ? results : allNames,
+    room("archive-space"),
+    archiveView,
+  );
+  const empty = (text) => '<p class="empty">' + text + "</p>";
   const cancel = (j) =>
     '<button class="danger" data-cancel="' +
     esc(j.id) +
     '" ' +
-    (j.cancel || data.instance === "preview" ? "disabled" : "") +
+    (offline || j.cancel || data.instance === "preview" ? "disabled" : "") +
     ">" +
     (j.cancel ? "Cancelando…" : "Cancelar") +
     "</button>";
-  const jobTitle = (job) =>
-    display
-      ? '<a class="job-title" href="/logs/' +
-        esc(job.id) +
+  const task = (j) => {
+    const name = esc(j.meta.label),
+      project = esc(j.meta.project),
+      owner = esc(j.meta.owner);
+    const running = j.state === "running";
+    const title = display
+      ? '<a class="job-title" href="/logs/' + esc(j.id) + '">' + name + "</a>"
+      : name;
+    const status = running
+      ? duration(Date.now() / 1000 - j.started)
+      : clock(j.created);
+    const links = display
+      ? ""
+      : '<div class="links"><a href="/logs/' +
+        esc(j.id) +
+        '">Log</a><a href="/result/' +
+        esc(j.id) +
+        '">Detalhes</a>' +
+        cancel(j) +
+        "</div>";
+    const detail = running
+      ? '<div class="task-detail"><code title="' +
+        esc(j.meta.command.join(" ")) +
         '">' +
-        esc(job.meta.label) +
-        "</a>"
-      : esc(job.meta.label);
-  const links = (j) =>
-    '<div class="links hide-display"><a href="/logs/' +
-    esc(j.id) +
-    '">Log</a><a href="/result/' +
-    esc(j.id) +
-    '">Detalhes</a>' +
-    cancel(j) +
-    "</div>";
-  const empty = (t) => '<p class="empty">' + t + "</p>";
-  byId("running").innerHTML =
-    current
-      .map(
-        (j) =>
-          '<div class="job"><div class="jobhead"><strong><i class="signal"></i>' +
-          jobTitle(j) +
-          "</strong><time>" +
-          duration(Date.now() / 1000 - j.started) +
-          "</time></div><p>" +
-          esc(j.meta.project) +
-          " · " +
-          esc(j.meta.owner) +
-          " · " +
-          Math.round(j.memory / 1048576) +
-          " MiB</p><code>" +
-          esc(j.meta.command.join(" ")) +
-          '</code><span class="activity">' +
-          esc(j.activity || "Preparando execução") +
-          "</span>" +
-          links(j) +
-          "</div>",
-      )
-      .join("") ||
-    empty(
-      "Nenhum teste em execução" + (filter.value ? " neste projeto." : "."),
+        esc(j.meta.command.join(" ")) +
+        '</code><span title="' +
+        esc(j.activity) +
+        '">' +
+        esc(j.activity || "Preparando execução") +
+        "</span></div>"
+      : "";
+    return (
+      '<div class="task-row ' +
+      (running ? "job" : "queued") +
+      '"><div class="task-main"><strong title="' +
+      name +
+      '">' +
+      title +
+      '</strong><small title="' +
+      project +
+      " · " +
+      owner +
+      '">' +
+      projectDot(j.meta.project) +
+      "<b>" +
+      project +
+      "</b> · " +
+      owner +
+      '</small></div><div class="task-usage"><time>' +
+      status +
+      "</time>" +
+      (running
+        ? "<small>" + Math.round(j.memory / 1048576) + " MiB</small>"
+        : "") +
+      "</div>" +
+      links +
+      detail +
+      "</div>"
     );
-  byId("waiting").innerHTML =
-    (display ? waiting.slice(0, 3) : waiting)
-      .map(
-        (j) =>
-          '<div class="queued"><strong>' +
-          jobTitle(j) +
-          "</strong><small>" +
-          esc(j.meta.project) +
-          " · " +
-          esc(j.meta.owner) +
-          "</small>" +
-          links(j) +
-          "</div>",
-      )
-      .join("") || empty("Fila vazia.");
-  const projectsToShow = new Set(allNames);
-  const results = display
-    ? history.filter((job) => projectsToShow.delete(job.meta.project))
-    : history.slice(0, historyLimit);
-  byId("history").innerHTML =
-    results
-      .map(
-        (j) =>
-          '<div class="history-row"><b class="' +
-          esc(j.state) +
-          '">' +
-          esc(labels[j.state] || j.state) +
-          '</b><div><a href="/logs/' +
-          esc(j.id) +
-          '">' +
-          esc(j.meta.label) +
-          "</a><small>" +
-          esc(j.meta.project) +
-          " · " +
-          esc(j.meta.owner) +
-          '<span class="hide-display"> · <a href="/result/' +
-          esc(j.id) +
-          '">Detalhes</a></span></small></div><time>' +
-          resultTime(j.finished) +
-          "</time></div>",
-      )
-      .join("") || empty("Nenhum resultado registrado.");
-  byId("more").hidden = display || history.length <= historyLimit;
+  };
+  writeRows(
+    workView,
+    activeRows.map(task).join("") ||
+      empty(
+        workView === "running"
+          ? filter.value
+            ? "Nenhum teste em execução neste projeto."
+            : "Nenhum teste em execução."
+          : "Fila vazia.",
+      ),
+  );
+  if (archiveView === "projects") {
+    writeRows(
+      "projects",
+      sideRows
+        .map((n) => {
+          const count = active.filter((j) => j.meta.project === n).length;
+          return (
+            '<div class="project"><strong title="' +
+            esc(n) +
+            '">' +
+            projectDot(n) +
+            esc(n) +
+            '</strong><span class="legend"><small>' +
+            count +
+            "/" +
+            data.project_slots +
+            '</small><span class="meter" aria-hidden="true">' +
+            bars(count, data.project_slots) +
+            "</span></span></div>"
+          );
+        })
+        .join("") || empty("Nenhum projeto cadastrado."),
+    );
+  } else {
+    writeRows(
+      "history",
+      sideRows
+        .map(
+          (j) =>
+            '<div class="history-row"><b class="' +
+            esc(j.state) +
+            '">' +
+            esc(labels[j.state] || j.state) +
+            '</b><div><a href="/logs/' +
+            esc(j.id) +
+            '" title="' +
+            esc(j.meta.label) +
+            '">' +
+            esc(j.meta.label) +
+            '</a><small title="' +
+            esc(j.meta.owner) +
+            '"><span>' +
+            esc(j.meta.project) +
+            " · " +
+            esc(j.meta.owner) +
+            "</span>" +
+            (!display
+              ? '<a href="/result/' + esc(j.id) + '">Detalhes</a>'
+              : "") +
+            "</small></div><time>" +
+            resultTime(j.finished) +
+            "</time></div>",
+        )
+        .join("") || empty("Nenhum resultado registrado."),
+    );
+  }
+  if (offline) showOffline();
   byId("updated").textContent =
     (data.instance === "preview"
       ? "Demonstração local · "
-      : "Última leitura · ") + clock(Date.now() / 1000);
+      : "Última leitura · ") + clock(lastRead);
+}
+function showOffline() {
+  byId("summary").textContent = "Reconectando…";
+  document.body.dataset.state = "offline";
+  byId("connection").textContent = "Sem conexão";
+  byId("connection").classList.remove("online");
+  byId("pause").disabled = true;
+  byId("message").textContent =
+    "Tentando reconectar ao Deck. Os dados exibidos são da última leitura.";
 }
 async function refresh() {
   if (pending) return;
@@ -253,30 +421,17 @@ async function refresh() {
     });
     if (!r.ok) throw Error();
     data = await r.json();
-    const focus = document.activeElement;
-    const previous = focus?.dataset.cancel
-      ? '[data-cancel="' + CSS.escape(focus.dataset.cancel) + '"]'
-      : focus?.matches("#history a, .links a, .job-title")
-        ? 'a[href="' + CSS.escape(focus.getAttribute("href")) + '"]'
-        : null;
+    lastRead = Date.now() / 1000;
+    offline = false;
     render();
-    if (previous && !focus.isConnected)
-      document.querySelector(previous)?.focus({ preventScroll: true });
     byId("connection").textContent = data.alive
       ? "Conectado"
       : "Executor sem resposta";
     byId("connection").classList.toggle("online", data.alive);
   } catch {
-    byId("connection").textContent = "Sem conexão";
-    byId("pause").disabled = true;
-    document.querySelectorAll("[data-cancel]").forEach((button) => {
-      button.disabled = true;
-    });
-    byId("summary").textContent = "Reconectando…";
-    document.body.dataset.state = "offline";
-    byId("connection").classList.remove("online");
-    byId("message").textContent =
-      "Tentando reconectar ao Deck. Os dados exibidos são da última leitura.";
+    offline = true;
+    if (data) render();
+    else showOffline();
   } finally {
     pending = false;
     document.dispatchEvent(new Event("station-refresh"));
@@ -308,10 +463,17 @@ document.addEventListener("click", (e) => {
   const id = e.target.dataset.cancel;
   if (id) action("/cancel/" + id);
 });
-byId("filter").onchange = render;
-byId("more").onclick = () => {
-  historyLimit += 20;
-  render();
+byId("filter").onchange = () => {
+  pages.clear();
+  if (data) render();
 };
+let layoutFrame = 0;
+const observer = new ResizeObserver(() => {
+  cancelAnimationFrame(layoutFrame);
+  layoutFrame = requestAnimationFrame(() => {
+    if (data) render();
+  });
+});
+for (const id of ["work-space", "archive-space"]) observer.observe(byId(id));
 refresh();
 setInterval(refresh, 4000);
