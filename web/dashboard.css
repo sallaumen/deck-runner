@@ -1263,6 +1263,10 @@ footer {
   display: flex;
   flex-direction: column;
 }
+#suite-summary {
+  font: 650 13px var(--mono);
+  color: var(--text);
+}
 #dialog-log {
   min-height: 0;
 }

@@ -121,6 +121,31 @@
       if (!res.ok) throw Error();
       const content = await res.text();
       if (!dialog.open || reading !== view) return;
+      if (
+        view.isLog &&
+        job?.meta.command?.[0] === "mix" &&
+        job.meta.command.includes("test")
+      ) {
+        const lines = content.replace(/\x1b\[[0-9;]*m/g, "").split(/\r?\n/);
+        const summary = lines.findLast((line) =>
+          /^(?:\d+ (?:doctests?|properties|property), )*\d+ tests?, \d+ failures?(?:, \d+ (?:excluded|skipped|invalid|pending))*$/.test(
+            line.trim(),
+          ),
+        );
+        const recap = byId("suite-summary");
+        recap.hidden = !summary;
+        if (summary)
+          recap.textContent =
+            "ExUnit · " +
+            summary
+              .trim()
+              .replace(/\btests?\b/g, (n) =>
+                n === "test" ? "teste" : "testes",
+              )
+              .replace(/\bfailures?\b/g, (n) =>
+                n === "failure" ? "falha" : "falhas",
+              );
+      }
       view.output = content;
       if (log.hidden || atEnd()) followOutput();
       updateEndButton();
@@ -176,6 +201,7 @@
     heading.tabIndex = 0;
     heading.setAttribute("data-scroll", "");
     heading.scrollTop = 0;
+    byId("suite-summary").hidden = true;
     log.textContent = "";
     log.hidden = confirm.hidden = end.hidden = true;
     note.textContent = "Carregando…";
@@ -214,6 +240,7 @@
     note.textContent = "Os testes continuam rodando no Deck.";
     byId("reader-resources").hidden = true;
     context.hidden = log.hidden = end.hidden = true;
+    byId("suite-summary").hidden = true;
     confirm.hidden = false;
     dialog.showModal();
     confirm.focus();
