@@ -142,7 +142,7 @@ function renderCrew(active) {
   const hadFocus = crew.contains(document.activeElement);
   crew.hidden = !active.length;
   crew.dataset.single = String(active.length === 1);
-  const dense = active.length > 2 && panelsFit.matches && innerHeight > 680;
+  const dense = active.length > 2 && threeCrewLines.matches;
   crew.dataset.dense = String(dense);
   const visible = crewPage(active, dense ? 3 : 2, "crew-lines");
   writeRows(
@@ -360,6 +360,13 @@ let workView = "running",
   archiveView = "history",
   workChosen = false;
 const panelsFit = matchMedia("(min-width: 720px) and (min-aspect-ratio: 6/5)");
+
+const threeCrewLines = matchMedia(
+  "(min-width: 720px) and (min-aspect-ratio: 6/5) and (min-height: 681px)",
+);
+threeCrewLines.addEventListener("change", () => {
+  if (display && data) render();
+});
 
 function showChange(view) {
   if (!matchMedia("(prefers-reduced-motion: reduce)").matches) {

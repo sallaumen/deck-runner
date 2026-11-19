@@ -237,6 +237,12 @@ test(
       );
       assert.equal(await latest.evaluate((el) => el.getAnimations().length), 0);
       await page.setViewportSize({ width: 1280, height: 800 });
+      await page.waitForFunction(
+        () =>
+          matchMedia(
+            "(min-width: 720px) and (min-height: 681px) and (min-aspect-ratio: 6/5)",
+          ).matches,
+      );
       const peer = job(91, "running", 16);
       peer.meta = {
         ...peer.meta,
@@ -247,6 +253,7 @@ test(
       const sibling = job(92, "running", 17);
       await update([active, peer, job(89, "running", 16), sibling]);
       const lines = page.locator(".crew-line");
+      await lines.nth(2).waitFor({ timeout: 5000 });
       assert.deepEqual(await lines.locator("strong").allTextContents(), [
         "estudio",
         "orbita",
