@@ -319,12 +319,16 @@ function render() {
   const allNames = data.projects.map((p) => p.name);
   const filter = byId("filter");
   if (JSON.stringify(allNames) !== filter.dataset.names) {
-    const old = filter.value;
+    const old =
+      filter.value ||
+      (!display && new URL(location.href).searchParams.get("project"));
     filter.innerHTML =
       '<option value="">Todos os projetos</option>' +
       allNames.map((n) => "<option>" + esc(n) + "</option>").join("");
     filter.value = allNames.includes(old) ? old : "";
     filter.dataset.names = JSON.stringify(allNames);
+    if (!display) syncProjectAddress(filter.value);
+    document.dispatchEvent(new Event("station-filter"));
   }
   const select = (j) => !filter.value || j.meta.project === filter.value;
   const current = active.filter(select),
@@ -629,7 +633,15 @@ document.addEventListener("click", (e) => {
   const id = e.target.dataset.cancel;
   if (id) action("/cancel/" + id);
 });
+function syncProjectAddress(name) {
+  const url = new URL(location.href);
+  if (name) url.searchParams.set("project", name);
+  else url.searchParams.delete("project");
+  if (url.href !== location.href)
+    window.history.replaceState(window.history.state, "", url);
+}
 byId("filter").onchange = () => {
+  if (!display) syncProjectAddress(byId("filter").value);
   pages.clear();
   if (data) render();
 };

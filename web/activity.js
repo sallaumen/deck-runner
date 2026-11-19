@@ -235,6 +235,7 @@
       }, 1200);
   });
   byId("filter").addEventListener("change", render);
+  document.addEventListener("station-filter", render);
   function suspend() {
     clearTimeout(timer);
     clearTimeout(chartUpdate);
