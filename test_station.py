@@ -78,6 +78,17 @@ class HttpTest(unittest.TestCase):
         for query in ["?hours=0", "?hours=", "?hours=6&hours=24"]:
             self.assertEqual(self.request("/api/activity" + query)[0], 400)
 
+    def test_boot_signal_waits_for_steam_without_blocking_the_queue(self):
+        with patch.object(server, "remote_play_ready", return_value=False):
+            code, headers, _ = self.request("/api/boot")
+            self.assertEqual((code, headers["Cache-Control"]), (503, "no-store"))
+            self.assertEqual(self.request("/api/status")[0], 200)
+        with patch.object(server, "remote_play_ready", return_value=True), patch.object(
+            Path, "read_text", return_value="be3a0602-c41e-4e67-ad02-522bf7bbd703\n"
+        ):
+            code, _, boot = self.request("/api/boot")
+            self.assertEqual((code, boot), (200, b"be3a0602-c41e-4e67-ad02-522bf7bbd703"))
+
     def test_limits_are_atomic_persistent_and_protected_against_stale_edits(self):
         headers = {"Origin": f"http://127.0.0.1:{self.http.server_port}"}
         form = dict(token=server.TOKEN, slots="8", project_slots="5",
@@ -139,16 +150,48 @@ class HttpTest(unittest.TestCase):
                 settings.valid_host(value)
 
 
+class RemotePlayTest(unittest.TestCase):
+    def test_only_the_steam_process_listening_on_the_host_port_is_ready(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            pid = root / "steam.pid"
+            (root / "net").mkdir()
+            fds = root / "123" / "fd"
+            fds.mkdir(parents=True)
+            self.assertFalse(server.remote_play_ready(root, pid))
+            pid.write_text("123\n")
+            fd = fds / "5"
+            fd.symlink_to("socket:[101]")
+            for protocol, port, state, inode, ready in [
+                ("tcp", "699C", "01", "101", False),  # Connected, not listening.
+                ("tcp", "699D", "0A", "101", False),
+                ("tcp", "699C", "0A", "202", False),  # A different process.
+                ("tcp", "699C", "0A", "101", True),
+                ("tcp6", "699C", "0A", "101", True),
+            ]:
+                with self.subTest(protocol=protocol, port=port, state=state, inode=inode):
+                    table = root / "net" / protocol
+                    table.write_text(f"header\n0: 00000000:{port} 00000000:0000 {state} 0:0 0:0 0 1000 0 {inode}\n")
+                    self.assertEqual(server.remote_play_ready(root, pid), ready)
+                    table.unlink()
+
+
 class VideoStatusTest(unittest.TestCase):
-    def test_signed_probe_reads_state_and_keeps_window_titles_private(self):
+    def test_signed_probe_recognizes_both_video_titles_and_the_home_screen(self):
         def respond(args, **_kwargs):
             Path(args[args.index("--stdout") + 1]).write_text(
-                "accessibility=true boot=true window=Personal document [Streaming]\n"
+                f"accessibility=true boot=true window={title}\n"
             )
             self.assertEqual(args[-1], "--status")
+            # LaunchServices can lose its wait handle after a short-lived probe exits.
+            return subprocess.CompletedProcess(args, 1)
 
         with patch.object(subprocess, "run", side_effect=respond):
-            self.assertEqual(link_status.probe(Path("/example.app")), (True, True, True))
+            for title, streaming in [
+                ("Personal document [Streaming]", True), ("Streaming Client", True), ("", False)
+            ]:
+                with self.subTest(title=title):
+                    self.assertEqual(link_status.probe(Path("/example.app")), (True, True, streaming))
 
     def test_open_close_and_reopen_are_read_only(self):
         self.enterContext(patch.object(link_status.sys, "platform", "darwin"))

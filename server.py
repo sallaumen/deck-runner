@@ -56,6 +56,7 @@ TERMINAL = (
 )
 TOKEN = secrets.token_urlsafe(32)
 MAX_SLOTS = 32
+REMOTE_PLAY_PORT = 27036
 CGROUP_ROOT = Path("/sys/fs/cgroup")
 DECK_SLICE = (
     CGROUP_ROOT / "user.slice" / f"user-{os.getuid()}.slice"
@@ -792,6 +793,35 @@ def heartbeat():
         time.sleep(3)
 
 
+def remote_play_ready(proc=Path("/proc"), pid_file=Path.home() / ".steam/steam.pid"):
+    """Check Steam's listening socket without connecting or waking the host."""
+    try:
+        pid = pid_file.read_text().strip()
+        if not pid.isdecimal():
+            return False
+        listeners = set()
+        for protocol in ("tcp", "tcp6"):
+            try:
+                rows = (proc / "net" / protocol).read_text().splitlines()[1:]
+            except FileNotFoundError:
+                continue
+            for row in rows:
+                fields = row.split()
+                if (len(fields) >= 10 and fields[3] == "0A"
+                        and fields[1].endswith(f":{REMOTE_PLAY_PORT:04X}")):
+                    listeners.add(f"socket:[{fields[9]}]")
+        if listeners:
+            for fd in (proc / pid / "fd").iterdir():
+                try:
+                    if os.readlink(fd) in listeners:
+                        return True
+                except FileNotFoundError:
+                    continue  # Steam closed this descriptor during the sample.
+    except OSError:
+        pass
+    return False
+
+
 class Handler(http.server.BaseHTTPRequestHandler):
     def log_message(self, *args):
         pass
@@ -856,6 +886,8 @@ class Handler(http.server.BaseHTTPRequestHandler):
             if path == "/api/storage":
                 return self.send(json.dumps(self.server.inventory.view()), "application/json")
             if path == "/api/boot":
+                if not remote_play_ready():
+                    return self.send("Aguardando o Steam Remote Play", "text/plain; charset=utf-8", 503)
                 return self.send(Path("/proc/sys/kernel/random/boot_id").read_text().strip(), "text/plain")
             if path == "/api/status":
                 return self.send(json.dumps(status()), "application/json")
