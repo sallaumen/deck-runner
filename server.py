@@ -257,6 +257,7 @@ def tail_log(path, size):
 
 
 def status():
+    observed_at = time.time()
     with contextlib.closing(db()) as c:
         c.execute("BEGIN")
         slots, project_slots = slot_limits(c)
@@ -301,6 +302,7 @@ def status():
             reason = "Aguardando memória para a próxima tarefa."
     return dict(
         instance=setting("instance_id"),
+        observed_at=observed_at,
         jobs=jobs,
         paused=setting("paused") == "1",
         reason=reason,

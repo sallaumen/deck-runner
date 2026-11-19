@@ -484,8 +484,13 @@ for (const id of ["work-space", "archive-space"]) observer.observe(byId(id));
 let events,
   resync = true,
   retryRefresh = false;
+// Keep a bounded memory across successive 100-result windows. A result can
+// reappear as the latest for a project without representing another finish.
+const observedStates = new Map();
 function signalChanges(previous) {
-  const known = new Map(previous?.jobs.map((j) => [j.id, j.state]));
+  if (!previous) observedStates.clear();
+  const known = observedStates;
+  const boundary = previous?.observed_at ?? lastRead - 30;
   const changed = previous
     ? data.jobs.filter(
         (j) =>
@@ -493,9 +498,14 @@ function signalChanges(previous) {
           (known.has(j.id) ||
             j.state === "running" ||
             j.state === "queued" ||
-            (j.finished || j.created) >= lastRead - 30),
+            (j.finished || j.created) >= boundary),
       )
     : data.jobs;
+  for (const job of data.jobs) {
+    known.delete(job.id);
+    known.set(job.id,job.state);
+  }
+  while (known.size > Math.max(512,data.jobs.length)) known.delete(known.keys().next().value);
   if (!changed.length) {
     if (!previous) byId("live-note").textContent = "";
     return;
