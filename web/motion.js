@@ -545,6 +545,36 @@
     if (auditioning) resetEffects();
     remember(jobs);
     if (mode !== "arcade" || document.querySelector("dialog[open]")) return;
+    if (
+      !reduced.matches &&
+      jobs.some(
+        (j) =>
+          Object.hasOwn(verdicts, j.state) &&
+          previous.jobs.some(
+            (prior) => prior.id === j.id && prior.state === "running",
+          ),
+      )
+    ) {
+      for (const row of document.querySelectorAll(".crew-line.continues")) {
+        row.animate(
+          [
+            {
+              transform: "translateX(7px)",
+              boxShadow: "inset 0 0 0 2px var(--crew-ink)",
+            },
+            {
+              transform: "translateX(0)",
+              boxShadow: "inset 0 0 0 0 transparent",
+            },
+          ],
+          {
+            id: "crew-continues",
+            duration: 1450,
+            easing: "cubic-bezier(.18,.78,.22,1)",
+          },
+        );
+      }
+    }
     const busy = (j) => j.state === "running" || j.state === "queued";
     if (
       !reduced.matches &&

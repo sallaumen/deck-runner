@@ -128,14 +128,16 @@ def db():
     return c
 
 
+def registered_projects(connection):
+    return connection.execute("""
+        SELECT name, config, rowid - 1 AS color FROM projects
+        WHERE coalesce(json_extract(config, '$.enabled'), 1) = 1 ORDER BY name
+    """)
+
+
 def projects():
     with contextlib.closing(db()) as c:
-        return {
-            name: json.loads(config)
-            for name, config in c.execute(
-                "SELECT name,config FROM projects WHERE coalesce(json_extract(config,'$.enabled'),1)=1 ORDER BY name"
-            )
-        }
+        return {row["name"]: json.loads(row["config"]) for row in registered_projects(c)}
 
 
 def register(p):
@@ -262,6 +264,10 @@ def status():
     with contextlib.closing(db()) as c:
         c.execute("BEGIN")
         slots, project_slots = slot_limits(c)
+        registry = [
+            dict(json.loads(row["config"]), color=row["color"])
+            for row in registered_projects(c)
+        ]
         rows = c.execute("""
             SELECT * FROM jobs WHERE id IN (
                 SELECT id FROM jobs WHERE state IN ('running','queued')
@@ -315,7 +321,7 @@ def status():
         slots=slots,
         project_slots=project_slots,
         max_slots=MAX_SLOTS,
-        projects=list(projects().values()),
+        projects=registry,
         memory_limit=DEFAULT_MIB * MIB,
         pool_mib=pool,
         reserve_mib=DESKTOP_MIB,
@@ -862,6 +868,7 @@ class Handler(http.server.BaseHTTPRequestHandler):
                 "/assets/motion.css",
                 "/assets/station.css",
                 "/assets/gantry.webp",
+                "/assets/cargo.webp",
                 "/assets/controller.js",
                 "/assets/activity.js",
                 "/assets/limits.js",

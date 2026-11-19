@@ -155,6 +155,7 @@ class QueueTest(unittest.TestCase):
         row = result["projects"][0]
         self.assertEqual(result["bucket_seconds"], width)
         self.assertEqual(len(row["requests"]), 24)
+        self.assertEqual(server.status()["projects"][0]["color"], row["color"])
         self.assertEqual(row["requests"][:2], [116, 1])
         self.assertEqual(sum(row["requests"]), 118)
         self.assertEqual(row["seconds"][:2], [186, 25])

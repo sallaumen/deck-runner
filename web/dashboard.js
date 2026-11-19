@@ -56,6 +56,18 @@ let data,
   lastRead,
   pending = false,
   offline = false;
+const projectPalette = [
+  "#74caff",
+  "#ffc278",
+  "#bca4ff",
+  "#71dbbc",
+  "#ff95b6",
+  "#d4dd75",
+  "#7cdfe1",
+  "#ffa08b",
+];
+const projectInk = (index) =>
+  projectPalette[index] ?? `hsl(${Math.round(index * 137.508) % 360} 73% 73%)`;
 const projectColors = new Map();
 let sampleTime = 0,
   sampleMark = 0,
@@ -100,6 +112,87 @@ function tickStopwatches() {
     clockTimer = setTimeout(tickStopwatches, Math.max(16, Math.ceil(next)));
 }
 
+// A result promotes only jobs that were already running in the same live session.
+let continuing = new Set();
+function trackContinuing(incoming, previous) {
+  if (
+    !previous?.alive ||
+    previous.instance !== incoming.instance ||
+    !incoming.alive
+  ) {
+    continuing.clear();
+    return;
+  }
+  const before = new Set(
+    previous.jobs.filter((j) => j.state === "running").map((j) => j.id),
+  );
+  const now = incoming.jobs.filter((j) => j.state === "running");
+  if (
+    incoming.jobs.some(
+      (j) => before.has(j.id) && Object.hasOwn(labels, j.state),
+    )
+  ) {
+    continuing = new Set(now.filter((j) => before.has(j.id)).map((j) => j.id));
+  } else if (now.length !== before.size || now.some((j) => !before.has(j.id))) {
+    continuing.clear();
+  }
+}
+function renderCrew(active) {
+  const crew = byId("crew");
+  const hadFocus = crew.contains(document.activeElement);
+  crew.hidden = !active.length;
+  crew.dataset.single = String(active.length === 1);
+  const dense = active.length > 2 && threeCrewLines.matches;
+  crew.dataset.dense = String(dense);
+  const visible = crewPage(active, dense ? 3 : 2, "crew-lines");
+  writeRows(
+    "crew-lines",
+    visible
+      .map((job) => {
+        const { project, owner, label } = job.meta;
+        const retained = continuing.has(job.id);
+        const description = [
+          project,
+          owner,
+          label,
+          retained && "Continua em execução",
+        ]
+          .filter(Boolean)
+          .join(" · ");
+        return (
+          '<a class="crew-line' +
+          (retained ? " continues" : "") +
+          '" href="/logs/' +
+          encodeURIComponent(job.id) +
+          '" title="' +
+          esc(description) +
+          '"><strong>' +
+          esc(project) +
+          '</strong><span class="crew-owner">' +
+          esc(owner) +
+          '</span><span class="crew-task">' +
+          esc(label) +
+          "</span></a>"
+        );
+      })
+      .join(""),
+  );
+  [...byId("crew-lines").children].forEach((row, index) => {
+    row.style.setProperty(
+      "--crew-ink",
+      projectColors.get(visible[index].meta.project) || "var(--mint)",
+    );
+  });
+  if (
+    hadFocus &&
+    (!crew.contains(document.activeElement) ||
+      !document.activeElement.getClientRects().length)
+  ) {
+    (crew.querySelector(".crew-line") || byId("edit-limits")).focus({
+      preventScroll: true,
+    });
+  }
+}
 function updateHeadline(active, queued) {
   const busy = active.length > 0 && data.alive && !offline;
   const scene = document.querySelector(".bay");
@@ -116,7 +209,7 @@ function updateHeadline(active, queued) {
         null,
       );
   const link = byId("bay-job");
-  link.hidden = !featured || offline || !data.alive;
+  link.hidden = !featured || offline || !data.alive || (display && busy);
   if (!link.hidden) {
     link.href = "/logs/" + encodeURIComponent(featured.id);
     const caption = busy
@@ -132,6 +225,7 @@ function updateHeadline(active, queued) {
     "--bay-ink",
     (busy && projectColors.get(featured.meta.project)) || "#85f5e5",
   );
+  if (display) renderCrew(busy ? active : []);
   const names = [...new Set(active.map((job) => job.meta.project))];
   const summary = byId("summary-name");
   const extra = byId("summary-more");
@@ -150,9 +244,13 @@ function updateHeadline(active, queued) {
       extra.title = names.slice(2).join(", ");
     }
     context.textContent =
-      (active.length === 1
-        ? "1 teste em execução"
-        : active.length + " testes em execução") +
+      (display && continuing.size === active.length
+        ? active.length === 1
+          ? "1 teste continua em execução"
+          : active.length + " testes continuam em execução"
+        : active.length === 1
+          ? "1 teste em execução"
+          : active.length + " testes em execução") +
       (data.paused ? " · fila pausada" : "");
   } else {
     extra.hidden = true;
@@ -263,6 +361,13 @@ let workView = "running",
   workChosen = false;
 const panelsFit = matchMedia("(min-width: 720px) and (min-aspect-ratio: 6/5)");
 
+const threeCrewLines = matchMedia(
+  "(min-width: 720px) and (min-aspect-ratio: 6/5) and (min-height: 681px)",
+);
+threeCrewLines.addEventListener("change", () => {
+  if (display && data) render();
+});
+
 function showChange(view) {
   if (!matchMedia("(prefers-reduced-motion: reduce)").matches) {
     byId(view).animate([{ opacity: 0.68 }, { opacity: 1 }], { duration: 130 });
@@ -306,6 +411,7 @@ function pager(id, redraw) {
 }
 const workPage = pager("work-pages", render);
 const archivePage = pager("archive-pages", render);
+const crewPage = pager("crew-pages", render);
 function room(id) {
   if (!panelsFit.matches) return 4;
   const box = byId(id);
@@ -346,6 +452,10 @@ function render() {
   const queued = data.jobs
     .filter((j) => j.state === "queued")
     .sort((a, b) => a.created - b.created);
+  for (const project of data.projects) {
+    if (Number.isInteger(project.color))
+      projectColors.set(project.name, projectInk(project.color));
+  }
   const allNames = data.projects.map((p) => p.name);
   const filter = byId("filter");
   if (JSON.stringify(allNames) !== filter.dataset.names) {
@@ -659,6 +769,7 @@ async function refresh() {
     if (!r.ok) throw Error();
     const previous = offline || resync ? null : data;
     const incoming = await r.json();
+    if (display) trackContinuing(incoming, previous);
     syncStopwatches(incoming, previous);
     data = incoming;
     lastRead = Date.now() / 1000;

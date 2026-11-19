@@ -3,16 +3,6 @@
   const period = byId("activity-period");
   const totals = byId("activity-totals");
   const status = byId("activity-status");
-  const palette = [
-    "#74caff",
-    "#ffc278",
-    "#bca4ff",
-    "#71dbbc",
-    "#ff95b6",
-    "#d4dd75",
-    "#7cdfe1",
-    "#ffa08b",
-  ];
   const number = new Intl.NumberFormat("pt-BR", { maximumFractionDigits: 2 });
   const compact = new Intl.NumberFormat("pt-BR", {
     notation: "compact",
@@ -27,9 +17,7 @@
   });
   const hour = (seconds) => time.format(seconds * 1000);
   const sum = (values) => values.reduce((total, value) => total + value, 0);
-  const color = (row) =>
-    palette[row.color] ??
-    `hsl(${Math.round(row.color * 137.508) % 360} 73% 73%)`;
+  const color = (row) => projectInk(row.color);
   let sample, pending, timer;
   function marker(row, x, y) {
     const shapes = [
