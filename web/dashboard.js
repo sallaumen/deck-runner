@@ -423,6 +423,7 @@ async function refresh() {
     lastRead = Date.now() / 1000;
     offline = false;
     render();
+    if (!previous || previous.instance !== data.instance) document.dispatchEvent(new Event("station-resync"));
     signalChanges(previous?.instance === data.instance ? previous : null);
     resync = document.hidden;
     byId("connection").textContent = data.alive
