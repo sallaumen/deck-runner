@@ -89,3 +89,20 @@
 #fx-audition {margin:0 0 18px;padding:0;border:0;}
 #fx-audition legend {font-size:14px;color:var(--muted);margin-bottom:6px;padding:0;}
 #fx-audition>div {display:flex;gap:6px;flex-wrap:wrap;}
+
+@media(max-width:719px),(max-height:580px) {
+  #fx-result {width:min(520px,calc(100% - 28px));}
+  .fx-shell {padding:14px 18px 18px;--cut:15px;}
+  .fx-result-head,.fx-caption {font-size:12px;gap:9px;}
+  .fx-result-main {gap:12px;margin:9px 0;}
+  .fx-emblem {width:48px;height:48px;font-size:34px;}
+  #fx-verdict {font-size:clamp(38px,8.5vw,63px);}
+  #fx-result:not([data-state="passed"]):not([data-state="failed"]) #fx-verdict {font-size:clamp(25px,5.8vw,45px);}
+  #fx-launch {top:17%;padding-right:12px;} .fx-pilot {width:48px;height:48px;}
+  #fx-launch strong {font-size:18px;} #fx-batch {font-size:11px;}
+}
+@media(max-width:719px) {
+  #fx-result {inset:auto 0 max(16px,env(safe-area-inset-bottom));}
+  #fx-result .fx-caption {font-size:11px;}
+  #fx-launch {left:12px;max-width:calc(100% - 24px);}
+}
