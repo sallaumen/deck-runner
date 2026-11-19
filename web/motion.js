@@ -31,11 +31,16 @@
     showFor(byId("fx-launch"),1900);
   }
 
-  function showResult(job) {
+  function showResult(job,batch=[job]) {
     const node = byId("fx-result");
     node.dataset.state = job.state;
     byId("fx-project").textContent = job.meta.project;
     byId("fx-run-id").textContent = "#" + job.id.slice(-6);
+    const counts = new Map();
+    for (const entry of batch) counts.set(entry.state, (counts.get(entry.state)||0)+1);
+    const summary=byId("fx-batch");
+    summary.hidden=batch.length<2;
+    summary.textContent=Array.from(counts,([state,count])=>count+" × "+(labels[state]||state)).join("   ·   ");
     const verdict = verdicts[job.state];
     byId("fx-verdict").textContent = verdict.title;
     byId("fx-symbol").textContent = verdict.symbol;
@@ -83,7 +88,7 @@
     if (document.hidden || !event.detail) return;
     const { jobs, previous } = event.detail;
     const result = mainResult(jobs);
-    if (result && display && !reduced.matches) showResult(result);
+    if (result && display && !reduced.matches) showResult(result,jobs.filter(j=>Object.hasOwn(verdicts,j.state)));
     const started = jobs.find(job=>job.state==="running");
     if (started && display && !reduced.matches) showLaunch(started);
     if (!reduced.matches && jobs.some(job => job.state === "queued")) {

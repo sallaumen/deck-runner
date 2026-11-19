@@ -65,3 +65,5 @@
 #fx-sparks .fx-chip {width:6px;height:13px;}
 
 #fx-elapsed {flex:none;color:var(--ink);font-variant-numeric:tabular-nums;font-size:1.1em;}
+
+#fx-batch {margin:-3px 0 12px;font:600 13px var(--mono);color:#e1ebe4;}
