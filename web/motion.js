@@ -128,6 +128,7 @@
     mode=Object.hasOwn(modes,value)?value:"arcade";
     modeInput.value=mode;
     document.documentElement.dataset.effects=mode;
+    byId("fx-audition").disabled=mode!=="arcade";
     byId("fx-mode-help").textContent=reduced.matches && mode==="arcade" ? "O sistema pediu movimento reduzido. Os avisos aparecem parados." : modes[mode];
     resetEffects();
   }
@@ -141,6 +142,18 @@
   byId("fx-settings").onclick=()=>{dialog.showModal();modeInput.focus();};
   byId("fx-back").onclick=()=>dialog.close();
   dialog.addEventListener("close",()=>byId("fx-settings").focus({preventScroll:true}));
+
+  byId("fx-audition").addEventListener("click",e=>{
+    const state=e.target.closest("[data-demo]")?.dataset.demo;
+    if (!state || mode!=="arcade") return;
+    dialog.close();
+    resetEffects();
+    const now=Date.now()/1000;
+    const sample={id:"000000000000",state,started:now-24,finished:now,
+      meta:{project:"Demonstração",label:"Prévia dos efeitos do painel"}};
+    if(state==="running") showLaunch(sample);
+    else {showResult(sample);byId("fx-run-id").textContent="PRÉVIA";}
+  });
 
   document.addEventListener("station-change", event => {
     if (document.hidden || !event.detail || mode!=="arcade") return;
