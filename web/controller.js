@@ -170,6 +170,14 @@
     view.cancel.abort();
     const links = [...document.querySelectorAll("a[href]")];
     const target =
+      (view.source?.getClientRects().length && view.source) ||
+      (view.fromTrend &&
+        links.find(
+          (el) =>
+            el.closest("#trend") &&
+            el.href === view.href &&
+            el.getClientRects().length,
+        )) ||
       links.find((el) => el.href === view.href && el.getClientRects().length) ||
       byId("switch");
     target.focus();
@@ -193,6 +201,8 @@
     reading = {
       id: item.pathname.split("/").pop(),
       href: item.href,
+      source: item,
+      fromTrend: !!item.closest("#trend"),
       isLog,
       cancel: new AbortController(),
     };

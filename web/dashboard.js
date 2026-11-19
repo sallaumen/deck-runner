@@ -361,11 +361,13 @@ function render() {
           esc(j.id) +
           '" class="' +
           esc(j.state) +
-          '" aria-label="' +
-          esc(description) +
           '" title="' +
           esc(description) +
-          '"></span>'
+          '"><a href="/logs/' +
+          esc(j.id) +
+          '" aria-label="' +
+          esc(description) +
+          '"></a></span>'
         );
       })
       .join(""),

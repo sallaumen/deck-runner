@@ -559,7 +559,17 @@ body:not(.display) .task-row {
   gap: 4px;
   margin-top: 6px;
 }
+#trend a {
+  position: absolute;
+  inset: -5px 0;
+  border-radius: 2px;
+}
+#trend a:focus-visible {
+  outline: 2px solid var(--text);
+  outline-offset: 1px;
+}
 #trend span {
+  position: relative;
   height: 5px;
   flex: 1;
   min-width: 0;
