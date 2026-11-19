@@ -29,7 +29,7 @@ O serviço mantém um repositório Git por projeto, uma referência por tarefa e
 | Cancelado ou interrompido | Houve um pedido de cancelamento ou o serviço reiniciou com a tarefa em andamento. |
 | Expirou ou atingiu limite | O executor encerrou a tarefa por tempo, crescimento do log ou espaço em disco. |
 
-O painel lê a fila e os resultados a cada quatro segundos. O Mac pode cair durante uma execução sem retirar sua vaga ou perder o resultado. A identificação da estação, persistida no banco, permite ao diagnóstico confirmar que as conexões SSH e HTTP chegaram ao mesmo Deck.
+Um observador lê as mudanças de estado confirmadas no SQLite a cada 0,6 s e avisa os painéis conectados por Server-Sent Events. Cada painel busca o estado atual ao receber o aviso ou reconectar. Uma consulta periódica mantém o acompanhamento se o fluxo cair e atualiza memória e logs. O inventário de disco roda separadamente, com uma única medição compartilhada por estação. O Mac pode cair durante uma execução sem retirar sua vaga ou perder o resultado. A identificação da estação, persistida no banco, permite ao diagnóstico confirmar que as conexões SSH e HTTP chegaram ao mesmo Deck.
 
 ## Evidência de operação
 

@@ -17,6 +17,7 @@
           >Deck Runner</strong
         >
       </div>
+      <div id="live-note" role="status" aria-atomic="true"></div>
       <div class="top-actions">
         <span id="connection" class="status" role="status">Conectando…</span
         ><a class="button" id="switch" href="/?screen=1">Tela do Deck</a>
@@ -30,6 +31,14 @@
           <p class="metrics">
             <span>RAM livre <b id="ram">—</b></span
             ><span>Disco livre <b id="disk">—</b></span>
+            <button
+              id="open-storage"
+              aria-haspopup="dialog"
+              aria-label="Ver armazenamento e limpeza"
+            >
+              Testes no disco <b id="storage-used">—</b>
+              <span aria-hidden="true">›</span>
+            </button>
           </p>
           <div class="notice-slot">
             <p
@@ -194,6 +203,60 @@
       <span id="pad-help" hidden>Direcional move · A seleciona · B volta</span>
       <time id="updated"></time>
     </footer>
+    <dialog id="storage-dialog" aria-labelledby="storage-title">
+      <div class="storage-head">
+        <h2 id="storage-title">Armazenamento</h2>
+        <span id="storage-time"></span>
+      </div>
+      <div
+        class="storage-body"
+        tabindex="0"
+        data-scroll
+        role="region"
+        aria-label="Uso de disco e espaço por projeto"
+      >
+        <div class="storage-reading">
+          <strong id="storage-total">—</strong><span>em projetos e testes</span>
+        </div>
+        <p class="storage-policy" id="disk-policy"></p>
+        <svg
+          id="storage-bar"
+          viewBox="0 0 100 4"
+          preserveAspectRatio="none"
+          aria-hidden="true"
+        ></svg>
+        <div id="storage-groups"></div>
+        <table class="storage-projects" aria-label="Espaço ocupado por projeto">
+          <thead>
+            <tr>
+              <th>Projeto</th>
+              <th>Cópias</th>
+              <th>Cache</th>
+              <th>Git e logs¹</th>
+              <th>Total</th>
+            </tr>
+          </thead>
+          <tbody id="storage-projects"></tbody>
+        </table>
+        <p class="storage-fine">
+          ¹ Inclui repositórios Git, logs e arquivos de envio. Imagens de
+          contêiner e outros aplicativos ficam fora da medição.
+        </p>
+      </div>
+      <div class="storage-cleanup">
+        <div>
+          <strong id="storage-eligible">Medindo espaço…</strong>
+          <p id="storage-feedback" role="status">
+            A limpeza remove cópias de testes encerrados. Logs, resultados e
+            cache continuam disponíveis.
+          </p>
+        </div>
+        <div class="dialog-actions">
+          <button id="storage-back">Voltar</button
+          ><button id="clean-storage" disabled>Limpar cópias</button>
+        </div>
+      </div>
+    </dialog>
     <dialog id="enroll-dialog" aria-labelledby="enroll-title">
       <h2 id="enroll-title">Adicionar projeto</h2>
       <p>
@@ -290,6 +353,7 @@
     <script src="/assets/dashboard.js"></script>
     <script src="/assets/activity.js"></script>
     <script src="/assets/limits.js"></script>
+    <script src="/assets/storage.js"></script>
     <script src="/assets/controller.js"></script>
   </body>
 </html>

@@ -46,19 +46,21 @@ def install():
     files = {
         APP / f: SRC / f
         for f in [
-            "server.py",
             "activity.py",
+            "live.py",
+            "storage.py",
             "profiles.py",
             "settings.py",
             "run-project.sh",
             "open-panel.sh",
             "display.py",
+            "server.py",
         ]
     }
     files.update(
         {
             APP / "web" / f: SRC / "web" / f
-            for f in ["icon.svg", "dashboard.css", "dashboard.js", "controller.js", "activity.js", "limits.js", "dashboard.html"]
+            for f in ["icon.svg", "dashboard.css", "dashboard.js", "controller.js", "activity.js", "limits.js", "storage.js", "dashboard.html"]
         }
     )
     files.update(

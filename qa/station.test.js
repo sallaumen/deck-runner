@@ -105,6 +105,35 @@ test(
         route.fulfill({ json: live }),
       );
       await page.evaluate(() => refresh());
+      const diskButton = page.locator("#open-storage");
+      await diskButton.click();
+      await page.locator("#storage-projects tr").first().waitFor();
+      const diskDialog = page.locator("#storage-dialog");
+      const diskParts = ["#storage-dialog", "#storage-back", "#clean-storage"];
+      const diskBefore = await boxes(diskParts);
+      const clean = diskDialog.getByRole("button", { name: "Limpar cópias" });
+      await clean.click();
+      const confirmDisk = diskDialog.getByRole("button", {
+        name: "Confirmar limpeza",
+      });
+      await confirmDisk.waitFor();
+      assert.deepEqual(await boxes(diskParts), diskBefore);
+      await diskDialog.getByRole("button", { name: "Cancelar" }).click();
+      await clean.waitFor();
+      let cleaned = 0;
+      await page.route("**/storage/clean", (route) => {
+        const form = new URLSearchParams(route.request().postData());
+        assert.equal(form.get("plan"), "preview");
+        assert.ok(form.get("token"));
+        cleaned++;
+        return route.fulfill({ status: 409, json: { started: false } });
+      });
+      await clean.click();
+      await confirmDisk.click();
+      await diskDialog.getByText(/A medição mudou/).waitFor();
+      assert.equal(cleaned, 1);
+      await diskDialog.getByRole("button", { name: "Voltar" }).click();
+      assert.ok(await diskButton.evaluate((b) => b === document.activeElement));
       await adjust.click();
       for (let i = 0; i < 3; i++)
         await page.getByLabel("Aumentar vagas no Deck").click();
@@ -619,7 +648,9 @@ test(
       await page.unroute("**/api/activity?hours=*");
       let activityReply = { ...series, projects: [] };
       await page.route("**/api/activity?hours=*", (route) =>
-        activityReply ? route.fulfill({ json: activityReply }) : route.abort(),
+        activityReply
+          ? route.fulfill({ json: activityReply })
+          : route.fulfill({ status: 503, body: "Unavailable" }),
       );
       await period.selectOption("24");
       await page.locator("#request-plot .activity-empty").waitFor();
@@ -661,6 +692,57 @@ test(
         plotBefore,
         "Axis labels shifted the drawing area",
       );
+      await page.addInitScript(() => {
+        window.EventSource = class extends EventTarget {
+          readyState = 1;
+          constructor() {
+            super();
+            window.queueStream = this;
+          }
+          close() {
+            this.readyState = 2;
+          }
+        };
+      });
+      shown = { ...sample, jobs: [] };
+      await page.goto(url.origin + "/?screen=1&station=1");
+      await page.locator("#usage").getByText("0 / 5").waitFor();
+      const pushedJob = {
+        ...job,
+        created: Date.now() / 1000,
+        started: null,
+        finished: null,
+        state: "queued",
+      };
+      const pushQueue = () =>
+        page.evaluate(() =>
+          window.queueStream.dispatchEvent(new Event("queue")),
+        );
+      shown.jobs = [pushedJob];
+      await pushQueue();
+      await page
+        .locator("#live-note")
+        .getByText(/Entrou na fila/)
+        .waitFor({ timeout: 1800 });
+      assert.equal(await page.locator("#waiting .queued").count(), 1);
+      await page.emulateMedia({ reducedMotion: "reduce" });
+      shown.jobs = [
+        { ...pushedJob, started: Date.now() / 1000, state: "running" },
+      ];
+      await pushQueue();
+      await page
+        .locator("#live-note")
+        .getByText(/Começou/)
+        .waitFor({ timeout: 1800 });
+      assert.equal(
+        await page
+          .locator("#running .job")
+          .evaluate((el) => el.getAnimations().length),
+        0,
+      );
+      const noteBefore = await page.locator("#live-note").textContent();
+      await page.evaluate(() => refresh());
+      assert.equal(await page.locator("#live-note").textContent(), noteBefore);
       assert.deepEqual(errors, []);
     } finally {
       try {

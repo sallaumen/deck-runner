@@ -73,6 +73,7 @@ def sample(state):
         project_slots=3,
         available_memory=int(7.4 * 1024**3),
         disk_free=84 * 1024**3,
+        disk_reserve=10 * 1024**3, disk_admit=15 * 1024**3,
         instance="preview",
     )
 
@@ -96,6 +97,41 @@ class Preview(Handler):
         if not self.valid_host():
             return self.send("Invalid host", code=403)
         path = urlsplit(self.path).path
+        if path == "/api/events":
+            return self.send("", code=204)
+        if path == "/api/storage":
+            mib = 1024**2
+            projects = [
+                dict(
+                    name=p["name"],
+                    worktrees=(i + 1) * 540 * mib,
+                    cache=96 * mib,
+                    repos=42 * mib,
+                    jobs=7 * mib,
+                )
+                for i, p in enumerate(self.server.sample["projects"])
+            ]
+            for row in projects:
+                row["total"] = sum(
+                    row[k] for k in ("worktrees", "cache", "repos", "jobs")
+                )
+            groups = {
+                key: sum(row[key] for row in projects)
+                for key in ("worktrees", "cache", "repos", "jobs")
+            }
+            report = dict(
+                projects=projects,
+                groups=groups,
+                total=sum(groups.values()),
+                reclaimable=2400 * mib,
+                count=12,
+                measured=time.time(),
+                plan="preview",
+            )
+            return self.send(
+                json.dumps(dict(state="idle", report=report, outcome=None)),
+                "application/json",
+            )
         if path == "/api/status":
             return self.send(json.dumps(self.server.sample), "application/json")
         if path.startswith(("/logs/", "/result/")):
