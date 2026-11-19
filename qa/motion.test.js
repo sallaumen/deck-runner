@@ -105,6 +105,10 @@ test(
         "estudio",
       );
       assert.equal(await page.locator("#used-count").innerText(), "1");
+      assert.equal(
+        await page.locator("#fx-launch-task").innerText(),
+        jobs[1].meta.label,
+      );
       const pilot = page.locator("#summary .fx-pilot");
       const stride = () =>
         pilot.evaluate((el) => getComputedStyle(el).animationName);
