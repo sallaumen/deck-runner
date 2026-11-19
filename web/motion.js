@@ -165,6 +165,13 @@
   document.addEventListener("station-change", event => {
     if (document.hidden || !event.detail || mode!=="arcade" || document.querySelector("dialog[open]")) return;
     const { jobs, previous } = event.detail;
+    if (!reduced.matches) {
+      const completed=new Set(jobs.filter(j=>Object.hasOwn(verdicts,j.state)).map(j=>j.id));
+      for(const segment of byId("trend").children) if(completed.has(segment.dataset.resultId)) {
+        segment.animate([{transform:"scaleY(1)"},{transform:"scaleY(2.4)",offset:.22},{transform:"scaleY(1)"}],
+          {duration:640,easing:"cubic-bezier(.21,.75,.3,1)"});
+      }
+    }
     const result = mainResult(jobs);
     if (result && display) presentResults(jobs);
     const started = jobs.find(job=>job.state==="running");
