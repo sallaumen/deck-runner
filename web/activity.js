@@ -136,6 +136,19 @@
     "(min-width: 720px) and (max-height: 600px) and (min-aspect-ratio: 6/5)",
   );
   shortDisplay.addEventListener("change", render);
+  let order = "count";
+  const choices = document.querySelectorAll("[data-order]");
+  for (const button of choices)
+    button.onclick = () => {
+      order = button.dataset.order;
+      for (const item of choices) {
+        if (item === button)
+          item.parentElement.setAttribute("aria-sort", "descending");
+        else item.parentElement.removeAttribute("aria-sort");
+      }
+      pages.delete("activity-totals");
+      render();
+    };
   const legendPage = pager("legend-pages", render);
   function render() {
     if (!sample) return;
@@ -149,6 +162,7 @@
       }))
       .sort(
         (a, b) =>
+          b[order] - a[order] ||
           b.count - a.count ||
           b.runtime - a.runtime ||
           a.name.localeCompare(b.name),

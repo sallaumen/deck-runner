@@ -779,6 +779,20 @@ footer {
   padding-left: 0;
   text-align: left;
 }
+.activity-key [data-order] {
+  min-height: 0;
+  padding: 1px 0;
+  background: transparent;
+  border: 0;
+  border-radius: 2px;
+  font: inherit;
+  color: inherit;
+}
+.activity-key [aria-sort] button {
+  color: var(--mint);
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
 .activity-key thead th {
   font-size: 10px;
   font-weight: 500;

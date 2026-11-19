@@ -35,7 +35,7 @@ No Deck ou no painel do Mac, selecione o nome de uma tarefa na tela de acompanha
 
 Na faixa inferior, **Envios de testes** conta cada tarefa uma vez, na hora em que entrou na fila. Uma suíte com 27 casos conta como um envio. **Tempo de execução** soma os minutos em que as tarefas de cada projeto ocuparam vagas, incluindo a preparação do ambiente. Duas tarefas que rodam por dez minutos ao mesmo tempo somam vinte minutos. A espera na fila fica fora dessa soma.
 
-A janela de **6 horas** usa intervalos de 15 minutos. Em **24 horas**, cada intervalo tem uma hora. Os gráficos têm o mesmo eixo de tempo e cada projeto mantém a sua cor. A tabela mostra os totais, ordenados por envios. Com o mouse, pare sobre um intervalo para ver os valores das linhas. Na tela de controles, o filtro de projeto também se aplica aos gráficos.
+A janela de **6 horas** usa intervalos de 15 minutos. Em **24 horas**, cada intervalo tem uma hora. Os gráficos têm o mesmo eixo de tempo e cada projeto mantém a sua cor. A tabela começa ordenada por envios. Selecione **Tempo** para comparar quanto tempo de execução cada projeto consumiu, ou **Envios** para voltar à contagem. Com o mouse, pare sobre um intervalo para ver os valores das linhas. Na tela de controles, o filtro de projeto também se aplica aos gráficos.
 
 A leitura é atualizada a cada minuto com o histórico dos projetos cadastrados, incluindo tarefas em andamento e projetos com zero envios no período.
 
