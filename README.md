@@ -53,6 +53,7 @@ Em **Ocupação do Deck → Ajustar vagas**, escolha quantos testes podem rodar 
 | Quero… | Onde encontrar |
 |---|---|
 | Cadastrar projetos Mix, Node, Python ou uma imagem própria | [Projetos e uso pelos agentes](docs/projects.md) |
+| Ver o piloto, experimentar um resultado e ajustar a intensidade | [Efeitos da estação, com prévia animada](docs/motion.md) |
 | Comparar envios e tempo de execução por projeto | [Gráficos da bancada](docs/operations.md#comparar-o-uso-por-projeto) |
 | Ler um log ao vivo e voltar à mesma tarefa pelo controle | [Usar o Deck sem teclado](docs/operations.md#usar-o-deck-sem-teclado) |
 | Conferir o vídeo no Mac e retomar a transmissão após um reinício | [Steam Link no Mac](docs/operations.md#retomar-a-transmissão-no-mac) |
