@@ -85,7 +85,7 @@ function tickStopwatches() {
   const now = stationTime();
   let next = Infinity;
   for (const node of document.querySelectorAll(
-    "#running:not([hidden]) time[data-started], #station-dialog[open] time[data-started]",
+    "#running:not([hidden]) time[data-started], #waiting:not([hidden]) time[data-started], #station-dialog[open] time[data-started]",
   )) {
     const elapsed = Math.max(0, now - Number(node.dataset.started));
     const seconds = Math.floor(elapsed);
@@ -466,7 +466,13 @@ function render() {
       ? '<a class="job-title" href="/logs/' + esc(j.id) + '">' + name + "</a>"
       : name;
     const status = !running
-      ? "<time>" + clock(j.created) + "</time>"
+      ? Number.isFinite(j.created)
+        ? '<time role="timer" aria-live="off" aria-label="Tempo na fila" data-started="' +
+          j.created +
+          '" title="Entrou às ' +
+          clock(j.created) +
+          '">—</time><small>de espera</small>'
+        : "—"
       : Number.isFinite(j.started)
         ? '<time class="stopwatch" role="timer" aria-live="off" aria-label="Tempo em execução" data-started="' +
           j.started +

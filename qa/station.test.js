@@ -783,6 +783,10 @@ test(
         .getByText(/Entrou na fila/)
         .waitFor({ timeout: 1800 });
       assert.equal(await page.locator("#waiting .queued").count(), 1);
+      assert.match(
+        await page.locator("#waiting [role=timer]").innerText(),
+        /^\d+:\d{2}$/,
+      );
       await page.emulateMedia({ reducedMotion: "reduce" });
       shown.jobs = [
         { ...pushedJob, started: Date.now() / 1000, state: "running" },
