@@ -39,6 +39,26 @@ test(
       const sample = await (
         await context.request.get(url.origin + "/api/status")
       ).json();
+      // Compare the same controls in one live document, after layout and observers settle.
+      const boxes = (selectors) =>
+        page.evaluate(async (selectors) => {
+          await Promise.all(
+            document
+              .getAnimations()
+              .map((animation) => animation.finished.catch(() => {})),
+          );
+          await new Promise((resolve) =>
+            requestAnimationFrame(() => requestAnimationFrame(resolve)),
+          );
+          return Object.fromEntries(
+            selectors.map((selector) => {
+              const r = document
+                .querySelector(selector)
+                .getBoundingClientRect();
+              return [selector, [r.x, r.y, r.width, r.height]];
+            }),
+          );
+        }, selectors);
       const dimensions = () =>
         page.evaluate(() => [
           document.documentElement.scrollWidth,
@@ -110,6 +130,13 @@ test(
         .getByText(/5 execuções/)
         .waitFor();
       await adjust.click();
+      const limitParts = [
+        "#limits-dialog",
+        "#save-limits",
+        "#dismiss-limits",
+        ".limit-row",
+      ];
+      const limitsBefore = await boxes(limitParts);
       await page.getByLabel("Diminuir vagas por projeto").click();
       await page.unroute("**/limits");
       await page.route("**/limits", (route) =>
@@ -117,6 +144,7 @@ test(
       );
       await apply.click();
       await page.getByText(/Os limites mudaram/).waitFor();
+      assert.deepEqual(await boxes(limitParts), limitsBefore);
       assert.equal(await page.locator("#draft-slots").innerText(), "7");
       await page.keyboard.press("Escape");
       await page.unroute("**/limits");
@@ -274,9 +302,7 @@ test(
       await page.setViewportSize({ width: 1280, height: 800 });
       const job = sample.jobs.find((j) => j.state === "running");
       const logPath = "/logs/" + job.id;
-      let outputText = Array.from({ length: 150 }, (_, i) => "Linha " + i).join(
-        "\n",
-      );
+      let outputText = "Preparando tarefa";
       let readCount = 0,
         unavailable = false;
       await page.route("**" + logPath, (route) => {
@@ -290,7 +316,20 @@ test(
         .getByRole("link", { name: job.meta.label, exact: true })
         .click();
       const body = page.locator("#dialog-log");
+      await body.getByText("Preparando tarefa").waitFor();
+      const readerParts = [
+        "#station-dialog",
+        "#reader-heading",
+        "#dialog-log",
+        "#dialog-back",
+      ];
+      const readerBefore = await boxes(readerParts);
+      outputText = Array.from({ length: 150 }, (_, i) => "Linha " + i).join(
+        "\n",
+      );
+      await page.evaluate(() => refresh());
       await body.getByText("Linha 149", { exact: false }).waitFor();
+      assert.deepEqual(await boxes(readerParts), readerBefore);
       assert.ok(await body.evaluate((e) => e.scrollTop > 0));
       await body.evaluate((e) => {
         e.focus();
@@ -302,6 +341,7 @@ test(
       unavailable = true;
       await refresh();
       await page.getByText(/Leitura interrompida/).waitFor();
+      assert.deepEqual(await boxes(readerParts), readerBefore);
       assert.equal(await body.textContent(), held);
       unavailable = false;
       outputText =
@@ -312,7 +352,20 @@ test(
             ...sample,
             jobs: sample.jobs.map((j) =>
               j.id === job.id
-                ? { ...j, state: "passed", finished: Date.now() / 1000 }
+                ? {
+                    ...j,
+                    state: "passed",
+                    finished: Date.now() / 1000,
+                    meta: {
+                      ...j.meta,
+                      label: "Título extenso ".repeat(40),
+                      command: [
+                        "mix",
+                        "test",
+                        "arquivo_muito_longo/".repeat(90),
+                      ],
+                    },
+                  }
                 : j,
             ),
           },
@@ -330,6 +383,16 @@ test(
       assert.equal(await body.evaluate((e) => e.scrollTop), 80);
       await page.getByRole("button", { name: "Ir ao fim" }).click();
       await body.getByText(/Fim do teste/).waitFor();
+      assert.deepEqual(await boxes(readerParts), readerBefore);
+      await page.locator("#reader-heading").focus();
+      await page.keyboard.press("ArrowDown");
+      assert.ok(
+        await page
+          .locator("#reader-heading")
+          .evaluate(
+            (el) => el.scrollTop > 0 && el.scrollHeight > el.clientHeight,
+          ),
+      );
       const readsAtFinish = readCount;
       await refresh();
       assert.equal(readCount, readsAtFinish);
@@ -368,8 +431,9 @@ test(
         ],
       };
       await page.unroute("**/api/status");
+      let shown = crowded;
       await page.route("**/api/status", (route) =>
-        route.fulfill({ json: crowded }),
+        shown ? route.fulfill({ json: shown }) : route.abort(),
       );
       const series = await (
         await context.request.get(url.origin + "/api/activity?hours=6")
@@ -427,6 +491,87 @@ test(
             mode + " at " + w + "x" + h + " " + geometry,
           );
           assert.ok(geometry[5] <= h + 1);
+          const chartEdges = await boxes([
+            ".activity-x",
+            ".activity-notice",
+            "#activity-totals",
+            "#legend-pages",
+          ]);
+          const bottomOf = (rect) => rect[1] + rect[3];
+          assert.ok(
+            bottomOf(chartEdges[".activity-x"]) <=
+              chartEdges[".activity-notice"][1] + 1,
+            "Chart status overlaps the time axis at " + w,
+          );
+          assert.ok(
+            bottomOf(chartEdges["#activity-totals"]) <=
+              chartEdges["#legend-pages"][1] + 1,
+            "Legend pager overlaps a project at " + w,
+          );
+          const shell = [
+            "header",
+            ".overview",
+            "#summary",
+            ".notice-slot",
+            "#edit-limits",
+            "#usage",
+            ".layout",
+            ".work",
+            ".archive",
+            ".trend",
+            "#work-space",
+            "#archive-space",
+            ".project-activity",
+            "#request-plot",
+            "#runtime-plot",
+            "footer",
+            '[data-view="waiting"]',
+          ];
+          const baseline = await boxes(shell);
+          const jobRect = await boxes(["#running .job"]);
+          shown = { ...sample, jobs: [job] };
+          await refresh();
+          await page.locator("#usage").getByText("1 / 5").waitFor();
+          assert.deepEqual(
+            await boxes(shell),
+            baseline,
+            "One job changed the dashboard at " + w + "x" + h,
+          );
+          assert.deepEqual(
+            await boxes(["#running .job"]),
+            jobRect,
+            "Row resized when the queue shrank",
+          );
+          shown = {
+            ...sample,
+            jobs: [],
+            projects: [],
+            paused: true,
+            reason: "Aguardando espaço e memória. ".repeat(35),
+          };
+          await refresh();
+          await page.locator("#running .empty").waitFor();
+          assert.deepEqual(
+            await boxes(shell),
+            baseline,
+            "Empty station moved controls",
+          );
+          assert.ok(
+            await page
+              .locator("#message")
+              .evaluate((el) => el.scrollHeight > el.clientHeight),
+          );
+          shown = null;
+          await refresh();
+          await page.getByRole("heading", { name: "Reconectando…" }).waitFor();
+          assert.deepEqual(
+            await boxes(shell),
+            baseline,
+            "Offline state moved controls",
+          );
+          shown = crowded;
+          await refresh();
+          await page.locator("#usage").getByText("32 / 32").waitFor();
         }
       }
       await page.setViewportSize({ width: 1280, height: 800 });
@@ -455,6 +600,66 @@ test(
       assert.notEqual(
         await page.locator("#activity-totals").innerText(),
         firstLegend,
+      );
+      const chartParts = [
+        ".work",
+        ".archive",
+        ".project-activity",
+        ".activity-key",
+        "#requests-title",
+        "#request-plot",
+        "#runtime-plot",
+        "#activity-period",
+        ".activity-notice",
+        "footer",
+      ];
+      const chartBefore = await boxes(chartParts);
+      const plots = ["#request-plot > svg", "#runtime-plot > svg"];
+      const plotBefore = await boxes(plots);
+      await page.unroute("**/api/activity?hours=*");
+      let activityReply = { ...series, projects: [] };
+      await page.route("**/api/activity?hours=*", (route) =>
+        activityReply ? route.fulfill({ json: activityReply }) : route.abort(),
+      );
+      await period.selectOption("24");
+      await page.locator("#request-plot .activity-empty").waitFor();
+      assert.deepEqual(
+        await boxes(chartParts),
+        chartBefore,
+        "Empty charts resized the panel",
+      );
+      activityReply = null;
+      await period.selectOption("6");
+      await page.getByText(/Atividade indisponível/).waitFor();
+      assert.deepEqual(
+        await boxes(chartParts),
+        chartBefore,
+        "Chart error moved the panel",
+      );
+      activityReply = {
+        ...series,
+        projects: series.projects.map((row) => ({
+          ...row,
+          requests: row.requests.map((value) => value * 100000),
+          seconds: row.seconds.map((value) => value * 100000),
+        })),
+      };
+      await period.selectOption("24");
+      const topTick = page.locator("#request-plot .activity-y span").first();
+      await topTick.waitFor();
+      assert.notEqual(
+        await topTick.textContent(),
+        await topTick.getAttribute("title"),
+      );
+      assert.deepEqual(
+        await boxes(chartParts),
+        chartBefore,
+        "Large totals resized the panel",
+      );
+      assert.deepEqual(
+        await boxes(plots),
+        plotBefore,
+        "Axis labels shifted the drawing area",
       );
       assert.deepEqual(errors, []);
     } finally {

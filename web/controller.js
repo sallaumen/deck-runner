@@ -52,9 +52,11 @@
       { running: "Em execução", queued: "Na fila" }[job?.state] ||
       labels[job?.state] ||
       job?.state;
-    byId("dialog-title").textContent =
+    const title =
       job?.meta.label || (view.isLog ? "Log da tarefa" : "Detalhes da tarefa");
-    context.textContent = [
+    if (byId("dialog-title").textContent !== title)
+      byId("dialog-title").textContent = title;
+    const details = [
       view.isLog ? "Log" : "Detalhes",
       job?.meta.project,
       job?.meta.owner,
@@ -63,6 +65,7 @@
     ]
       .filter(Boolean)
       .join(" · ");
+    if (context.textContent !== details) context.textContent = details;
     context.hidden = false;
     try {
       const res = await fetch(view.href, {
@@ -122,6 +125,11 @@
       isLog,
       cancel: new AbortController(),
     };
+    dialog.classList.add("reader");
+    const heading = byId("reader-heading");
+    heading.tabIndex = 0;
+    heading.setAttribute("data-scroll", "");
+    heading.scrollTop = 0;
     log.textContent = "";
     log.hidden = confirm.hidden = end.hidden = true;
     note.textContent = "Carregando…";
@@ -152,6 +160,10 @@
   function askLeave() {
     reading?.cancel.abort();
     reading = null;
+    dialog.classList.remove("reader");
+    const heading = byId("reader-heading");
+    heading.removeAttribute("tabindex");
+    heading.removeAttribute("data-scroll");
     byId("dialog-title").textContent = "Voltar à área de trabalho?";
     note.textContent = "Os testes continuam rodando no Deck.";
     context.hidden = log.hidden = end.hidden = true;
@@ -181,10 +193,14 @@
     const vertical = key === "ArrowUp" || key === "ArrowDown";
     const sign = key === "ArrowUp" || key === "ArrowLeft" ? -1 : 1;
     const active = document.activeElement;
-    if (active === log && vertical && log.scrollHeight > log.clientHeight) {
-      const before = log.scrollTop;
-      log.scrollBy(0, sign * log.clientHeight * 0.6);
-      if (before !== log.scrollTop) return;
+    if (
+      vertical &&
+      active?.matches("[data-scroll]") &&
+      active.scrollHeight > active.clientHeight
+    ) {
+      const before = active.scrollTop;
+      active.scrollBy(0, sign * active.clientHeight * 0.6);
+      if (before !== active.scrollTop) return;
     }
     const root = document.querySelector("dialog[open]") || document;
     const candidates = [

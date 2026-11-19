@@ -651,7 +651,8 @@ footer {
   text-align: center;
   font: 600 22px var(--mono);
 }
-#limit-feedback:not(:empty) {
+#limit-feedback {
+  min-height: 2.8em;
   color: var(--warm);
   font-size: 14px;
   margin-bottom: 14px;
@@ -697,6 +698,10 @@ footer {
   text-align: right;
   white-space: nowrap;
 }
+.activity-key td {
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
 .activity-key th:first-child,
 .activity-key td:first-child {
   padding-left: 0;
@@ -734,7 +739,8 @@ footer {
 }
 .activity-plot {
   display: grid;
-  grid-template-columns: max-content minmax(0, 1fr);
+  grid-template-columns: 6ch minmax(0, 1fr);
+  font: 11px var(--mono);
   gap: 2px 6px;
   min-height: 86px;
 }
@@ -766,8 +772,11 @@ footer {
   color: var(--muted);
   font-size: 13px;
 }
-#activity-status {
+.activity-notice {
   grid-column: 1/-1;
+  min-height: 1.1rem;
+}
+#activity-status {
   color: var(--warm);
   font-size: 12px;
 }
@@ -802,21 +811,135 @@ footer {
     position: absolute;
     inset: 0;
   }
-  .project-activity {
-    min-height: clamp(154px, 24vh, 220px);
+  .overview {
+    block-size: clamp(112px, 16dvh, 136px);
+    padding-block: 12px 4px;
   }
+  .headline {
+    min-width: 0;
+  }
+  .headline h1 {
+    white-space: nowrap;
+  }
+  #work-space {
+    --row-height: 72px;
+  }
+  .capacity-title {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) max-content max-content;
+    gap: 8px;
+  }
+  #usage {
+    inline-size: 7ch;
+    text-align: right;
+  }
+  #work-space .task-main strong {
+    font-size: 16px;
+  }
+  #archive-space {
+    --row-height: 58px;
+  }
+  .project-activity {
+    block-size: clamp(185px, 24dvh, 220px);
+    grid-template-rows: minmax(0, 1fr) 1.1rem;
+    row-gap: 0;
+  }
+  .activity-key {
+    grid-row: 1 / 3;
+    align-self: stretch;
+    position: relative;
+  }
+  #legend-pages {
+    position: absolute;
+    bottom: 0;
+    right: 0;
+  }
+  .activity-notice {
+    grid-area: 2 / 2 / 3 / 4;
+  }
+  .activity-figure {
+    grid-row: 1;
+    align-self: stretch;
+    min-height: 0;
+    display: grid;
+    grid-template-rows: auto minmax(0, 1fr);
+  }
+  .activity-figure figcaption {
+    min-height: 1.5em;
+  }
+  .activity-plot {
+    min-height: 0;
+    grid-template-rows: minmax(0, 1fr) 1rem;
+  }
+  .activity-empty {
+    grid-row: 1 / -1;
+  }
+  .trend {
+    flex: none;
+  }
+  #trend {
+    height: 5px;
+  }
+  #connection {
+    inline-size: 10.5rem;
+    justify-content: flex-end;
+  }
+  #filter {
+    inline-size: clamp(10rem, 24vw, 20rem);
+  }
+  #pause {
+    inline-size: 8rem;
+  }
+  .views button span {
+    display: inline-block;
+    inline-size: 3ch;
+    text-align: start;
+  }
+  .task-usage {
+    inline-size: 8ch;
+  }
+  .links .danger {
+    inline-size: 8.5em;
+  }
+  .history-row time {
+    inline-size: 14ch;
+    text-align: right;
+  }
+  .metrics b {
+    display: inline-block;
+    min-inline-size: 7ch;
+  }
+  .activity-y {
+    font-size: 10px;
+  }
+  .pager > span {
+    min-width: 5ch;
+    text-align: center;
+  }
+  .legend small {
+    min-inline-size: 5ch;
+    text-align: right;
+  }
+  .legend .meter {
+    inline-size: 64px;
+  }
+  .legend .meter i {
+    flex: 1;
+  }
+
   .activity-plot > svg,
   .activity-y {
-    height: clamp(72px, 13vh, 135px);
+    height: 100%;
+    min-height: 0;
   }
   .activity-key table {
     table-layout: fixed;
   }
   .activity-key th:first-child {
-    width: 52%;
+    width: 45%;
   }
-  .activity-key td:last-child {
-    width: 29%;
+  .activity-key thead th:last-child {
+    width: 35%;
   }
   .activity-key th[scope="row"] {
     white-space: nowrap;
@@ -855,7 +978,20 @@ footer {
     gap: 7px;
   }
   .overview {
+    block-size: 94px;
     padding: 5px 0 0;
+  }
+  #work-space {
+    --row-height: 56px;
+  }
+  #archive-space {
+    --row-height: 52px;
+  }
+  #usage {
+    font-size: 18px;
+  }
+  #work-space .task-detail {
+    display: none;
   }
   .metrics {
     margin-top: 3px;
@@ -868,14 +1004,7 @@ footer {
   }
   .project-activity {
     padding: 6px 12px;
-    min-height: 110px;
-  }
-  .activity-plot > svg,
-  .activity-y {
-    height: 48px;
-  }
-  .activity-plot {
-    min-height: 64px;
+    block-size: 170px;
   }
   .trend {
     padding: 3px 10px 5px;
@@ -905,13 +1034,15 @@ footer {
     min-width: 30px;
   }
   .project-activity {
-    gap: 10px;
+    column-gap: 10px;
     grid-template-columns: minmax(208px, 1fr) repeat(2, minmax(0, 1.05fr));
   }
   .activity-figure {
     padding-left: 8px;
   }
   .activity-figure figcaption {
+    block-size: 2.25em;
+    align-content: start;
     flex-wrap: wrap;
     gap: 0 5px;
   }
@@ -953,13 +1084,25 @@ footer {
     border: 0;
     border-top: 1px solid var(--line);
   }
+  #work-space,
+  #archive-space {
+    flex: none;
+    block-size: calc(4 * var(--row-height));
+  }
+  #work-space {
+    --row-height: 76px;
+  }
+  body:not(.display) #work-space {
+    --row-height: 98px;
+  }
   .task-row {
     min-height: var(--row-height);
   }
   body:not(.display) .task-row {
-    height: auto;
+    height: var(--row-height);
     grid-template-columns: minmax(0, 1fr) auto;
-    padding-block: 8px;
+    padding-block: 4px;
+    row-gap: 0;
   }
   .links {
     grid-column: 1/-1;
@@ -986,21 +1129,21 @@ footer {
 .task-detail {
   display: none;
 }
-.list-space.spacious {
-  --row-height: 98px;
-}
-.spacious .task-row {
+
+#work-space .job {
   align-content: center;
   row-gap: 5px;
 }
-.spacious .task-detail {
-  display: flex;
-  align-items: baseline;
-  gap: 10px;
-  min-width: 0;
-  grid-column: 1/-1;
-  font: 12px var(--mono);
-  color: var(--muted);
+@media (min-height: 681px) {
+  #work-space .job .task-detail {
+    display: flex;
+    align-items: baseline;
+    gap: 10px;
+    min-width: 0;
+    grid-column: 1/-1;
+    font: 12px var(--mono);
+    color: var(--muted);
+  }
 }
 .task-detail code,
 .task-detail span {
@@ -1010,14 +1153,13 @@ footer {
   min-width: 0;
 }
 .task-detail code {
-  flex: 0 1 auto;
-  max-width: 70%;
+  flex: 0 0 52%;
   border: 1px solid var(--line);
   border-radius: 4px;
   padding: 2px 6px;
   color: var(--text);
 }
-.spacious .task-detail span {
+#work-space .task-detail span {
   flex: 1;
 }
 #dialog-title {
@@ -1033,8 +1175,17 @@ footer {
 #dialog-log {
   min-height: 0;
 }
-.message:not(:empty) {
+.notice-slot {
+  height: 1.5em;
   margin-top: 4px;
+  font-size: 14px;
+}
+.message {
+  max-height: 100%;
+  line-height: 1.5;
+  overflow: auto;
+  overflow-wrap: anywhere;
+  overscroll-behavior: contain;
 }
 .history-row small {
   display: flex;
@@ -1053,6 +1204,15 @@ footer {
   .overview {
     grid-template-columns: minmax(0, 1.22fr) minmax(280px, 0.85fr);
     gap: 18px;
+  }
+  .project-activity {
+    block-size: 130px;
+  }
+  .overview {
+    block-size: 88px;
+  }
+  .notice-slot {
+    font-size: 12px;
   }
   .overview h1 {
     font-size: 27px;
@@ -1096,4 +1256,105 @@ footer {
   -webkit-box-orient: vertical;
   -webkit-line-clamp: 2;
   overflow: hidden;
+}
+
+/* Reading more output must not move the log, its metadata or its controls. */
+#station-dialog.reader[open] {
+  display: grid;
+  block-size: min(36rem, 85dvh);
+  grid-template-rows: minmax(0, 4.8rem) minmax(0, 1fr) 1.6rem 44px;
+  gap: 8px;
+}
+.reader #reader-heading,
+.reader #dialog-log,
+.limits-body {
+  overflow: auto;
+  scrollbar-gutter: stable;
+  overscroll-behavior: contain;
+  min-width: 0;
+  min-height: 0;
+}
+.reader #reader-heading {
+  grid-row: 1;
+}
+.reader #dialog-title,
+.reader #dialog-context {
+  display: block;
+  overflow: visible;
+  -webkit-line-clamp: unset;
+}
+.reader #dialog-context {
+  margin: 4px 0 0;
+}
+.reader #dialog-log {
+  grid-row: 2;
+  margin: 0;
+  max-height: none;
+}
+.reader #dialog-message {
+  grid-row: 3;
+  margin: 0;
+  font-size: 14px;
+  align-self: center;
+}
+.reader .dialog-actions {
+  grid-row: 4;
+}
+#limits-dialog[open] {
+  display: grid;
+  block-size: min(28rem, 90dvh);
+  grid-template-rows: auto minmax(0, 1fr) 44px;
+  row-gap: 8px;
+}
+#save-limits {
+  min-inline-size: 7em;
+}
+@media (max-width: 719px), (max-aspect-ratio: 6/5) {
+  body:not(.display) #work-space .job .task-detail {
+    display: none;
+  }
+  .activity-key {
+    min-height: 174px;
+    position: relative;
+  }
+  #legend-pages {
+    position: absolute;
+    bottom: 0;
+    right: 0;
+  }
+  .activity-key table {
+    table-layout: fixed;
+  }
+  .activity-key th[scope="row"] {
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  .activity-plot {
+    block-size: 88px;
+  }
+  header {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    gap: 6px;
+  }
+  .top-actions {
+    display: contents;
+  }
+  #connection {
+    grid-column: 2;
+    grid-row: 1;
+    justify-self: end;
+    margin: 0;
+  }
+  #switch {
+    justify-self: start;
+  }
+  #leave {
+    justify-self: end;
+  }
+  .activity-notice {
+    min-height: 2.8em;
+    font-size: 12px;
+  }
 }
