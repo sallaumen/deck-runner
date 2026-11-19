@@ -54,7 +54,9 @@
         <div class="capacity">
           <div class="capacity-title">
             <h2>Ocupação do Deck</h2>
-            <strong id="usage"><span id="used-count">—</span><span id="slot-count"></span></strong>
+            <strong id="usage"
+              ><span id="used-count">—</span><span id="slot-count"></span
+            ></strong>
             <button id="edit-limits" aria-haspopup="dialog" disabled>
               Ajustar vagas
             </button>
@@ -200,7 +202,10 @@
       </section>
     </main>
     <footer>
-      <span class="fx-footer">Steam Deck <button id="fx-settings" aria-haspopup="dialog">Efeitos</button></span>
+      <span class="fx-footer"
+        >Steam Deck
+        <button id="fx-settings" aria-haspopup="dialog">Efeitos</button></span
+      >
       <span id="pad-help" hidden>Direcional move · A seleciona · B volta</span>
       <time id="updated"></time>
     </footer>
@@ -354,13 +359,29 @@
     <dialog id="fx-dialog" aria-labelledby="fx-dialog-title">
       <h2 id="fx-dialog-title">Efeitos do painel</h2>
       <label for="fx-mode">Intensidade</label>
-      <select id="fx-mode"><option value="arcade">Arcade</option><option value="quiet">Discreto</option><option value="off">Sem efeitos</option></select>
+      <select id="fx-mode">
+        <option value="arcade">Arcade</option>
+        <option value="quiet">Discreto</option>
+        <option value="off">Sem efeitos</option>
+      </select>
       <p id="fx-mode-help"></p>
-      <fieldset id="fx-audition"><legend>Experimentar no painel</legend><div>
-        <button data-demo="running">Início</button><button data-demo="passed">Aprovação</button><button data-demo="failed">Falha</button>
-      </div></fieldset>
-      <details id="fx-recent"><summary>Últimos avisos <span id="fx-recent-count">0</span></summary>
-        <ol id="fx-recent-list" tabindex="0" data-scroll aria-label="Eventos recentes da sessão"></ol><p id="fx-no-events">Os próximos movimentos da fila aparecem aqui.</p>
+      <fieldset id="fx-audition">
+        <legend>Experimentar no painel</legend>
+        <div>
+          <button data-demo="running">Início</button
+          ><button data-demo="passed">Aprovação</button
+          ><button data-demo="failed">Falha</button>
+        </div>
+      </fieldset>
+      <details id="fx-recent">
+        <summary>Últimos avisos <span id="fx-recent-count">0</span></summary>
+        <ol
+          id="fx-recent-list"
+          tabindex="0"
+          data-scroll
+          aria-label="Eventos recentes da sessão"
+        ></ol>
+        <p id="fx-no-events">Os próximos movimentos da fila aparecem aqui.</p>
       </details>
       <div class="dialog-actions"><button id="fx-back">Voltar</button></div>
     </dialog>
@@ -368,15 +389,30 @@
       <div id="fx-result" class="fx-scene" hidden>
         <div id="fx-sparks"></div>
         <div class="fx-shell">
-          <div class="fx-result-head"><span class="fx-project-tag"><i id="fx-project-ink"></i><span id="fx-project"></span></span><span id="fx-run-id"></span></div>
-          <div class="fx-result-main"><span class="fx-emblem" id="fx-symbol">✓</span><strong id="fx-verdict"></strong>
-            <span id="fx-combo" hidden><b id="fx-score"></b><small>aprovações<br>seguidas</small></span></div>
+          <div class="fx-result-head">
+            <span class="fx-project-tag"
+              ><i id="fx-project-ink"></i><span id="fx-project"></span></span
+            ><span id="fx-run-id"></span>
+          </div>
+          <div class="fx-result-main">
+            <span class="fx-emblem" id="fx-symbol">✓</span
+            ><strong id="fx-verdict"></strong>
+            <span id="fx-combo" hidden
+              ><b id="fx-score"></b
+              ><small>aprovações<br />seguidas</small></span
+            >
+          </div>
           <div id="fx-batch" hidden></div>
-          <div class="fx-caption"><span id="fx-job-name"></span><time id="fx-elapsed"></time></div>
+          <div class="fx-caption">
+            <span id="fx-job-name"></span><time id="fx-elapsed"></time>
+          </div>
         </div>
       </div>
       <div id="fx-launch" class="fx-scene" hidden>
-        <i class="fx-pilot"></i><div><strong>Teste iniciado</strong><span id="fx-launch-name"></span></div>
+        <i class="fx-pilot"></i>
+        <div>
+          <strong>Teste iniciado</strong><span id="fx-launch-name"></span>
+        </div>
       </div>
     </div>
     <script src="/assets/dashboard.js"></script>
