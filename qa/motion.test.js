@@ -115,14 +115,6 @@ test(
       ]);
       const latest = page.locator("#running .task-output");
       assert.ok(await latest.evaluate((el) => el.getAnimations().length > 0));
-      await page.emulateMedia({ reducedMotion: "reduce" });
-      assert.equal(await stride(), "none");
-      await update([
-        jobs[0],
-        { ...jobs[1], activity: "Running ExUnit with seed: 7" },
-      ]);
-      assert.equal(await latest.evaluate((el) => el.getAnimations().length), 0);
-      await page.emulateMedia({ reducedMotion: "no-preference" });
       await update([job(1, "passed", -3), job(2, "passed")]);
       assert.ok(await pilot.isHidden());
       await result.waitFor();
@@ -212,6 +204,17 @@ test(
           0,
         );
       }
+      const active = job(90, "running", 15);
+      await update([...jobs, active]);
+      assert.equal(await stride(), "none");
+      await update(
+        jobs.map((j) =>
+          j.id === active.id
+            ? { ...j, activity: "Running ExUnit with seed: 7" }
+            : j,
+        ),
+      );
+      assert.equal(await latest.evaluate((el) => el.getAnimations().length), 0);
       await page.route("**/api/status", (route) =>
         route.fulfill({ status: 503, body: "Offline" }),
       );
