@@ -40,6 +40,14 @@
     if (document.hidden || !dialog.open || !view) return;
     const job = data?.jobs.find((j) => j.id === view.id);
     const live = job?.state === "running" || job?.state === "queued";
+    const resources = byId("reader-resources");
+    const facts = [];
+    if (Number.isFinite(job?.peak) && job.peak > 0)
+      facts.push("Pico de RAM " + Math.ceil(job.peak / 1048576) + " MiB");
+    if (!live && Number.isInteger(job?.exit_code))
+      facts.push("Código de saída " + job.exit_code);
+    resources.textContent = facts.join(" · ");
+    resources.hidden = !facts.length;
     const timer = byId("reader-clock");
     const timed =
       Number.isFinite(job?.started) &&
@@ -113,6 +121,31 @@
       if (!res.ok) throw Error();
       const content = await res.text();
       if (!dialog.open || reading !== view) return;
+      if (
+        view.isLog &&
+        job?.meta.command?.[0] === "mix" &&
+        job.meta.command.includes("test")
+      ) {
+        const lines = content.replace(/\x1b\[[0-9;]*m/g, "").split(/\r?\n/);
+        const summary = lines.findLast((line) =>
+          /^(?:\d+ (?:doctests?|properties|property), )*\d+ tests?, \d+ failures?(?:, \d+ (?:excluded|skipped|invalid|pending))*$/.test(
+            line.trim(),
+          ),
+        );
+        const recap = byId("suite-summary");
+        recap.hidden = !summary;
+        if (summary)
+          recap.textContent =
+            "ExUnit · " +
+            summary
+              .trim()
+              .replace(/\btests?\b/g, (n) =>
+                n === "test" ? "teste" : "testes",
+              )
+              .replace(/\bfailures?\b/g, (n) =>
+                n === "failure" ? "falha" : "falhas",
+              );
+      }
       view.output = content;
       if (log.hidden || atEnd()) followOutput();
       updateEndButton();
@@ -137,6 +170,14 @@
     view.cancel.abort();
     const links = [...document.querySelectorAll("a[href]")];
     const target =
+      (view.source?.getClientRects().length && view.source) ||
+      (view.fromTrend &&
+        links.find(
+          (el) =>
+            el.closest("#trend") &&
+            el.href === view.href &&
+            el.getClientRects().length,
+        )) ||
       links.find((el) => el.href === view.href && el.getClientRects().length) ||
       byId("switch");
     target.focus();
@@ -160,6 +201,8 @@
     reading = {
       id: item.pathname.split("/").pop(),
       href: item.href,
+      source: item,
+      fromTrend: !!item.closest("#trend"),
       isLog,
       cancel: new AbortController(),
     };
@@ -168,6 +211,7 @@
     heading.tabIndex = 0;
     heading.setAttribute("data-scroll", "");
     heading.scrollTop = 0;
+    byId("suite-summary").hidden = true;
     log.textContent = "";
     log.hidden = confirm.hidden = end.hidden = true;
     note.textContent = "Carregando…";
@@ -204,7 +248,9 @@
     heading.removeAttribute("data-scroll");
     byId("dialog-title").textContent = "Voltar à área de trabalho?";
     note.textContent = "Os testes continuam rodando no Deck.";
+    byId("reader-resources").hidden = true;
     context.hidden = log.hidden = end.hidden = true;
+    byId("suite-summary").hidden = true;
     confirm.hidden = false;
     dialog.showModal();
     confirm.focus();

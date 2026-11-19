@@ -9,7 +9,7 @@
 | Janela ao entrar no Plasma | Autostart do KDE e `deck-runner-display.service` | `systemctl --user status deck-runner-display` |
 | Túnel ao entrar no Mac | LaunchAgent `io.github.deck-runner.tunnel` | `~/.local/bin/deck-runner doctor` |
 
-O painel e a fila atendem somente em loopback. No Mac, abra **Testes no Deck**. O modo **Tela do Deck** privilegia execução, ocupação e resultado por projeto. **Abrir controles** permite filtrar, pausar novas admissões, consultar logs e cancelar uma tarefa. A sequência recente resume até 12 resultados dos projetos ativos. Um estado offline conserva a última leitura e informa quando o painel está tentando reconectar.
+O painel e a fila atendem somente em loopback. No Mac, abra **Testes no Deck**. O modo **Tela do Deck** privilegia execução, ocupação e resultado por projeto. **Abrir controles** permite filtrar, pausar novas admissões, consultar logs e cancelar uma tarefa. A sequência recente resume até 12 resultados dos projetos ativos. Toque em uma marca ou selecione-a pelo controle para abrir o log daquela execução. Um estado offline conserva a última leitura e informa quando o painel está tentando reconectar.
 
 ## Diagnóstico em ordem
 
@@ -25,17 +25,17 @@ O arquivo `~/.config/deck-runner/host` no Mac guarda o destino. O cliente també
 
 Ao entrar na área de trabalho do Plasma, o atalho de inicialização abre **Deck Runner**. Use o analógico esquerdo ou o direcional para mover o foco. **A** seleciona. **B** volta de um log ou abre a confirmação para fechar o painel. O botão **Fechar painel** também funciona com o toque, o mouse e o teclado. O atalho **Deck Runner** na área de trabalho reabre a janela. Para jogar, use o modo Big Picture no Steam ou o atalho do SteamOS para o modo de jogo.
 
-Na tela do Deck, alterne **Em execução** e **Na fila** à esquerda ou **Resultados** e **Projetos** à direita. Quando a lista ocupa mais de uma página, as setas junto ao título mostram os itens seguintes. A paginação dos totais por projeto mantém as linhas de todos os projetos nos gráficos.
+Na tela do Deck, alterne **Em execução** e **Na fila** à esquerda ou **Resultados** e **Projetos** à direita. Quando a lista ocupa mais de uma página, as setas junto ao título mostram os itens seguintes. Na aba **Projetos**, a lista começa pelos projetos com mais testes em execução. Em caso de empate, aparece primeiro quem tem mais tarefas na fila. A paginação dos totais por projeto mantém as linhas de todos os projetos nos gráficos.
 
 Durante os testes, o título mostra os projetos em execução. Se houver mais de dois, o número ao lado indica quantos outros estão ativos. Cada linha identifica a tarefa, o projeto, o agente e a última atividade informada pelo teste. O cronômetro usa o horário do Deck e conta os segundos entre as leituras da fila, inclusive quando o log está aberto. Quando a conexão cai, o relógio para. Ao reconectar, volta ao tempo do executor. Ao terminar, o log mostra a duração registrada.
 
-No Deck ou no painel do Mac, selecione o nome de uma tarefa na tela de acompanhamento para ler o log. Se o título ou o comando forem longos, mova o foco para o cabeçalho e use o direcional para percorrer o texto. O cabeçalho e a saída rolam separadamente, e **Voltar** permanece no mesmo lugar. A saída acompanha as novas linhas enquanto você estiver no fim. Ao rolar para cima, o painel mantém sua posição. **Ir ao fim** volta a acompanhar a execução. Quando o teste termina, o painel faz a última leitura e mostra o resultado. **Voltar** devolve o foco à tarefa.
+No Deck ou no painel do Mac, selecione o nome de uma tarefa na tela de acompanhamento para ler o log. Se o título ou o comando forem longos, mova o foco para o cabeçalho e use o direcional para percorrer o texto. O cabeçalho e a saída rolam separadamente, e **Voltar** permanece no mesmo lugar. A saída acompanha as novas linhas enquanto você estiver no fim. Ao rolar para cima, o painel mantém sua posição. **Ir ao fim** volta a acompanhar a execução. Quando o teste termina, o painel faz a última leitura e mostra o resultado. Em tarefas `mix test`, o cabeçalho destaca a última contagem de testes e falhas encontrada na saída do ExUnit. **Voltar** devolve o foco à tarefa.
 
 ## Comparar o uso por projeto
 
 Na faixa inferior, **Envios de testes** conta cada tarefa uma vez, na hora em que entrou na fila. Uma suíte com 27 casos conta como um envio. **Tempo de execução** soma os minutos em que as tarefas de cada projeto ocuparam vagas, incluindo a preparação do ambiente. Duas tarefas que rodam por dez minutos ao mesmo tempo somam vinte minutos. A espera na fila fica fora dessa soma.
 
-A janela de **6 horas** usa intervalos de 15 minutos. Em **24 horas**, cada intervalo tem uma hora. Os gráficos têm o mesmo eixo de tempo e cada projeto mantém a sua cor. A tabela mostra os totais, ordenados por envios. Com o mouse, pare sobre um intervalo para ver os valores das linhas. Na tela de controles, o filtro de projeto também se aplica aos gráficos.
+A janela de **6 horas** usa intervalos de 15 minutos. Em **24 horas**, cada intervalo tem uma hora. Os gráficos têm o mesmo eixo de tempo e cada projeto mantém a sua cor. A tabela começa ordenada por envios. Selecione **Tempo** para comparar quanto tempo de execução cada projeto consumiu, ou **Envios** para voltar à contagem. Com o mouse, pare sobre um intervalo para ver os valores das linhas. Na tela de controles, o filtro de projeto também se aplica aos gráficos.
 
 A leitura é atualizada a cada minuto com o histórico dos projetos cadastrados, incluindo tarefas em andamento e projetos com zero envios no período.
 
@@ -66,7 +66,7 @@ A mudança vale para a próxima admissão e fica salva após suspensão, reiníc
 
 ## Armazenamento dos testes
 
-Em **Testes no disco**, ao lado do disco livre, confira os blocos ocupados pelas cópias de trabalho, caches de compilação, repositórios Git e arquivos das tarefas. A tabela separa os valores por projeto. Uma medição em segundo plano é compartilhada pelos painéis e reutilizada por até três minutos. O horário indica quando ela terminou. Imagens do Podman, bancos externos e jogos ficam fora desses totais.
+Em **Testes no disco**, ao lado do disco livre, confira os blocos ocupados pelas cópias de trabalho, caches de compilação, repositórios Git e arquivos das tarefas. A margem indica quantos bytes ainda separam o disco livre do limite de admissão. Quando ela acaba, a janela calcula quanto liberar para aceitar novos testes. A tabela separa os valores por projeto. Uma medição em segundo plano é compartilhada pelos painéis e reutilizada por até três minutos. O horário indica quando ela terminou. Imagens do Podman, bancos externos e jogos ficam fora desses totais.
 
 **Limpar cópias** mostra quantos testes encerrados entram na limpeza. **Confirmar limpeza** remove somente as cópias daquela medição que o Git reconhece e que continuam encerradas. O cache, os repositórios, os logs e o histórico permanecem disponíveis. A janela pode ser fechada durante a operação. Ao terminar, o painel mede de novo. Sem uma limpeza manual, continua valendo a retenção normal das cópias por um dia.
 

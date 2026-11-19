@@ -319,12 +319,16 @@ function render() {
   const allNames = data.projects.map((p) => p.name);
   const filter = byId("filter");
   if (JSON.stringify(allNames) !== filter.dataset.names) {
-    const old = filter.value;
+    const old =
+      filter.value ||
+      (!display && new URL(location.href).searchParams.get("project"));
     filter.innerHTML =
       '<option value="">Todos os projetos</option>' +
       allNames.map((n) => "<option>" + esc(n) + "</option>").join("");
     filter.value = allNames.includes(old) ? old : "";
     filter.dataset.names = JSON.stringify(allNames);
+    if (!display) syncProjectAddress(filter.value);
+    document.dispatchEvent(new Event("station-filter"));
   }
   const select = (j) => !filter.value || j.meta.project === filter.value;
   const current = active.filter(select),
@@ -357,11 +361,13 @@ function render() {
           esc(j.id) +
           '" class="' +
           esc(j.state) +
-          '" aria-label="' +
-          esc(description) +
           '" title="' +
           esc(description) +
-          '"></span>'
+          '"><a href="/logs/' +
+          esc(j.id) +
+          '" aria-label="' +
+          esc(description) +
+          '"></a></span>'
         );
       })
       .join(""),
@@ -376,7 +382,34 @@ function render() {
     : active.length
       ? "busy"
       : "idle";
-  byId("slots").innerHTML = bars(active.length, data.slots);
+  const slots = byId("slots");
+  const occupancy = new Map();
+  for (const job of active)
+    occupancy.set(job.meta.project, (occupancy.get(job.meta.project) || 0) + 1);
+  slots.setAttribute(
+    "aria-label",
+    active.length
+      ? "Ocupação por projeto. " +
+          [...occupancy].map(([name, n]) => name + ": " + n).join(", ")
+      : "Todas as vagas livres",
+  );
+  writeRows(
+    "slots",
+    active
+      .map((job) => {
+        const title = [job.meta.project, job.meta.label, job.meta.owner].join(
+          " · ",
+        );
+        return (
+          '<i class="used" title="' +
+          esc(title) +
+          '"><svg viewBox="0 0 1 1" preserveAspectRatio="none" aria-hidden="true"><rect width="1" height="1" fill="' +
+          esc(projectColors.get(job.meta.project) || "var(--mint)") +
+          '"/></svg></i>'
+        );
+      })
+      .join("") + bars(0, Math.max(0, data.slots - active.length)),
+  );
   byId("ram").textContent = gib(data.available_memory) + " GiB";
   byId("disk").textContent = gib(data.disk_free) + " GiB";
   updateHeadline(active, queued);
@@ -397,8 +430,21 @@ function render() {
     room("work-space"),
     workView,
   );
+  const demand = new Map(
+    allNames.map((name) => [name, { running: 0, queued: 0 }]),
+  );
+  for (const job of [...active, ...queued]) {
+    const entry = demand.get(job.meta.project);
+    if (entry) entry[job.state]++;
+  }
+  const roster = [...allNames].sort(
+    (a, b) =>
+      demand.get(b).running - demand.get(a).running ||
+      demand.get(b).queued - demand.get(a).queued ||
+      a.localeCompare(b, "pt-BR"),
+  );
   const sideRows = archivePage(
-    archiveView === "history" ? results : allNames,
+    archiveView === "history" ? results : roster,
     room("archive-space"),
     archiveView,
   );
@@ -500,7 +546,7 @@ function render() {
       "projects",
       sideRows
         .map((n) => {
-          const count = active.filter((j) => j.meta.project === n).length;
+          const { running: count, queued: pending } = demand.get(n);
           return (
             '<div class="project"><strong title="' +
             esc(n) +
@@ -508,6 +554,9 @@ function render() {
             projectDot(n) +
             esc(n) +
             '</strong><span class="legend"><small>' +
+            (pending
+              ? '<b class="project-wait">' + pending + " na fila</b> · "
+              : "") +
             count +
             "/" +
             data.project_slots +
@@ -635,10 +684,21 @@ document.addEventListener("click", (e) => {
   const id = e.target.dataset.cancel;
   if (id) action("/cancel/" + id);
 });
+function syncProjectAddress(name) {
+  const url = new URL(location.href);
+  if (name) url.searchParams.set("project", name);
+  else url.searchParams.delete("project");
+  if (url.href !== location.href)
+    window.history.replaceState(window.history.state, "", url);
+}
 byId("filter").onchange = () => {
+  if (!display) syncProjectAddress(byId("filter").value);
   pages.clear();
   if (data) render();
 };
+document.addEventListener("station-colors", () => {
+  if (data) render();
+});
 let layoutFrame = 0;
 const observer = new ResizeObserver(() => {
   cancelAnimationFrame(layoutFrame);

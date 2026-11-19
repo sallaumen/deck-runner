@@ -26,7 +26,7 @@ Com o projeto ocioso, repita `add` com a configuração completa e `--update` pa
 Na aba **Na fila**, cada tarefa mostra quanto tempo já esperou. Ao passar o mouse sobre o cronômetro, aparece a hora de entrada.
 
 1. Consulte `status` para saber se o Deck está disponível. Envie o **worktree real**, inclusive com edições locais. Informe o agente e a tarefa em `--agent` e uma descrição curta em `--label`.
-2. Guarde o ID retornado por `submit`. `wait ID` acompanha até o resultado e devolve código 0 para sucesso, 1 para tarefa sem sucesso ou 2 para erro de comunicação. `job ID` inclui a revisão original, a árvore enviada, o resultado, horários e memória de pico.
+2. Guarde o ID retornado por `submit`. `wait ID` acompanha até o resultado e devolve código 0 para sucesso, 1 para tarefa sem sucesso ou 2 para erro de comunicação. `job ID` inclui a revisão original, a árvore enviada, o resultado, horários e memória de pico. O cabeçalho do log no painel também mostra o pico de RAM medido e o código de saída registrado.
 3. Após editar o código, envie um novo snapshot. Se a conexão cair após começar o envio e antes de receber o ID, consulte o painel pela descrição antes de reenviar. Para cancelar a própria tarefa, use `cancel ID`.
 4. Mantenha verificações específicas de macOS, navegador ou release nos ambientes exigidos pelo projeto.
 

@@ -84,8 +84,17 @@
       setTimeout(() => dismiss(node), ms),
     );
   }
-  function showLaunch(job) {
-    byId("fx-launch-name").textContent = job.meta.project;
+  function showLaunch(job, batch = [job]) {
+    const names = [...new Set(batch.map((j) => j.meta.project))];
+    byId("fx-launch-title").textContent =
+      batch.length === 1
+        ? "Teste iniciado"
+        : batch.length + " testes iniciados";
+    byId("fx-launch-name").textContent = names.join(" / ");
+    byId("fx-launch-task").textContent =
+      batch.length === 1
+        ? job.meta.label
+        : batch.map((j) => j.meta.label).join(" · ");
     showFor(byId("fx-launch"), 1900);
   }
 
@@ -492,8 +501,9 @@
     }
     const result = mainResult(jobs);
     if (result && display) presentResults(jobs);
-    const started = jobs.find((job) => job.state === "running");
-    if (started && display && !(result && reduced.matches)) showLaunch(started);
+    const started = jobs.filter((job) => job.state === "running");
+    if (started.length && display && !(result && reduced.matches))
+      showLaunch(started[0], started);
     if (!reduced.matches && jobs.some((job) => job.state === "queued")) {
       const tab = document.querySelector('[data-view="waiting"]');
       tab

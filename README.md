@@ -29,6 +29,8 @@ O executor usa Python, SQLite e Podman no Deck. A interface é HTML, CSS e JavaS
 
 Use **Testes no disco** para consultar o espaço por projeto e liberar cópias de testes encerrados. A bancada reserva 10 GiB para o Deck e exige 15 GiB livres para admitir novos testes.
 
+Nos controles do Mac, selecione um projeto e salve o endereço nos favoritos. Ao reabrir esse endereço, a lista de tarefas, os resultados e os gráficos recuperam o filtro.
+
 ## Envie um teste
 
 Cadastre uma vez a pasta principal do repositório em `~/projects`. Seus worktrees passam a compartilhar a fila e as vagas do projeto. O exemplo usa um projeto Elixir com PostgreSQL na porta 5432.

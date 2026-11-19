@@ -216,6 +216,12 @@ h1 {
   background: #304347;
   border-radius: 2px;
 }
+.slots .used svg {
+  display: block;
+  width: 100%;
+  height: 100%;
+  border-radius: inherit;
+}
 .slots .used,
 .meter .used {
   background: var(--mint);
@@ -455,6 +461,7 @@ footer,
   font-size: clamp(17px, 1.75vw, 26px);
   inline-size: 8ch;
 }
+#reader-resources,
 #reader-duration {
   font: 12px var(--mono);
   color: var(--muted);
@@ -533,6 +540,10 @@ body:not(.display) .task-row {
   background: #354c4e;
   border-radius: 2px;
 }
+.project-wait {
+  color: var(--warm);
+  font-weight: 550;
+}
 .trend {
   padding: 8px 14px 12px;
   border-top: 1px solid var(--line);
@@ -554,7 +565,17 @@ body:not(.display) .task-row {
   gap: 4px;
   margin-top: 6px;
 }
+#trend a {
+  position: absolute;
+  inset: -5px 0;
+  border-radius: 2px;
+}
+#trend a:focus-visible {
+  outline: 2px solid var(--text);
+  outline-offset: 1px;
+}
 #trend span {
+  position: relative;
   height: 5px;
   flex: 1;
   min-width: 0;
@@ -774,6 +795,20 @@ footer {
 .activity-key td:first-child {
   padding-left: 0;
   text-align: left;
+}
+.activity-key [data-order] {
+  min-height: 0;
+  padding: 1px 0;
+  background: transparent;
+  border: 0;
+  border-radius: 2px;
+  font: inherit;
+  color: inherit;
+}
+.activity-key [aria-sort] button {
+  color: var(--mint);
+  text-decoration: underline;
+  text-underline-offset: 3px;
 }
 .activity-key thead th {
   font-size: 10px;
@@ -1244,6 +1279,10 @@ footer {
   display: flex;
   flex-direction: column;
 }
+#suite-summary {
+  font: 650 13px var(--mono);
+  color: var(--text);
+}
 #dialog-log {
   min-height: 0;
 }
@@ -1554,6 +1593,13 @@ footer {
 .storage-fine,
 #storage-feedback {
   color: var(--muted);
+}
+#disk-headroom {
+  color: var(--mint);
+  font-weight: 600;
+}
+#disk-headroom.low-space {
+  color: var(--warm);
 }
 .storage-policy {
   font-size: 14px;

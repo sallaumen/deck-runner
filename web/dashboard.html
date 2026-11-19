@@ -68,7 +68,12 @@
               Ajustar vagas
             </button>
           </div>
-          <div class="slots" id="slots" aria-hidden="true"></div>
+          <div
+            class="slots"
+            id="slots"
+            role="img"
+            aria-label="Ocupação do Deck"
+          ></div>
           <p id="policy"></p>
         </div>
       </div>
@@ -176,8 +181,24 @@
             <thead>
               <tr>
                 <th scope="col">Projeto</th>
-                <th scope="col">Envios</th>
-                <th scope="col">Tempo</th>
+                <th scope="col" aria-sort="descending">
+                  <button
+                    type="button"
+                    data-order="count"
+                    aria-label="Ordenar por envios"
+                  >
+                    Envios
+                  </button>
+                </th>
+                <th scope="col">
+                  <button
+                    type="button"
+                    data-order="runtime"
+                    aria-label="Ordenar por tempo de execução"
+                  >
+                    Tempo
+                  </button>
+                </th>
               </tr>
             </thead>
             <tbody id="activity-totals"></tbody>
@@ -231,6 +252,7 @@
         <div class="storage-reading">
           <strong id="storage-total">—</strong><span>em projetos e testes</span>
         </div>
+        <p id="disk-headroom"></p>
         <p class="storage-policy" id="disk-policy"></p>
         <svg
           id="storage-bar"
@@ -347,7 +369,9 @@
     <dialog id="station-dialog" aria-labelledby="dialog-title">
       <div id="reader-heading" role="group" aria-labelledby="dialog-title">
         <h2 id="dialog-title"></h2>
+        <p id="suite-summary" hidden></p>
         <p id="dialog-context" hidden></p>
+        <p id="reader-resources" hidden></p>
         <p id="reader-duration" hidden>
           Tempo de execução
           <time id="reader-clock" role="timer" aria-live="off"></time>
@@ -422,7 +446,9 @@
       <div id="fx-launch" class="fx-scene" hidden>
         <i class="fx-pilot"></i>
         <div>
-          <strong>Teste iniciado</strong><span id="fx-launch-name"></span>
+          <strong id="fx-launch-title">Teste iniciado</strong
+          ><span id="fx-launch-name"></span>
+          <span id="fx-launch-task"></span>
         </div>
       </div>
     </div>

@@ -34,6 +34,13 @@ test(
       await page.getByRole("heading", { name: "estudio / atlas" }).waitFor();
       assert.equal(await page.locator("#usage").innerText(), "2 / 5");
       assert.equal(await page.locator("#history .history-row").count(), 4);
+      const segment = page.locator("#trend a").first();
+      await segment.click();
+      await page.locator("#dialog-log").waitFor();
+      await page.locator("#dialog-back").click();
+      await page.waitForFunction(
+        () => !!document.activeElement.closest("#trend"),
+      );
       const sample = await (
         await context.request.get(url.origin + "/api/status")
       ).json();
@@ -70,6 +77,14 @@ test(
       await page.locator("#request-plot polyline").first().waitFor();
       assert.equal(await page.locator("#activity-totals tr").count(), 4);
       assert.equal(await page.locator("#runtime-plot polyline").count(), 4);
+      await page
+        .getByRole("button", { name: "Ordenar por tempo de execução" })
+        .click();
+      assert.equal(
+        await page.locator("[aria-sort] button").getAttribute("data-order"),
+        "runtime",
+      );
+      await page.getByRole("button", { name: "Ordenar por envios" }).click();
       const firstColor = await page
         .locator("#request-plot polyline")
         .first()
@@ -80,6 +95,11 @@ test(
           .locator("#runtime-plot polyline")
           .first()
           .getAttribute("stroke"),
+      );
+      assert.equal(await page.locator("#slots .used rect").count(), 2);
+      assert.match(
+        await page.locator("#slots").getAttribute("aria-label"),
+        /estudio: 1/,
       );
       const period = page.getByRole("combobox", {
         name: "Período dos gráficos",
@@ -111,6 +131,10 @@ test(
       await diskButton.click();
       await page.locator("#storage-projects tr").first().waitFor();
       const diskDialog = page.locator("#storage-dialog");
+      assert.match(
+        await page.locator("#disk-headroom").innerText(),
+        /de margem para novos testes/,
+      );
       const diskParts = ["#storage-dialog", "#storage-back", "#clean-storage"];
       const diskBefore = await boxes(diskParts);
       const clean = diskDialog.getByRole("button", { name: "Limpar cópias" });
@@ -189,6 +213,10 @@ test(
       );
       await page.getByRole("link", { name: "Abrir controles" }).click();
       await page.locator("#filter").selectOption("atlas");
+      assert.equal(new URL(page.url()).searchParams.get("project"), "atlas");
+      await page.reload();
+      await page.locator("#running .job").first().waitFor();
+      assert.equal(await page.locator("#filter").inputValue(), "atlas");
       assert.equal(await page.locator("#running .job").count(), 1);
       await page
         .locator("#activity-totals th")
@@ -376,7 +404,7 @@ test(
       assert.equal(await body.textContent(), held);
       unavailable = false;
       outputText =
-        "Somente as linhas recentes estão neste lote.\nFim do teste.";
+        "Somente as linhas recentes estão neste lote.\n22 tests, 0 failures\nFim do teste.";
       await page.route("**/api/status", (route) =>
         route.fulfill({
           json: {
@@ -387,6 +415,8 @@ test(
                     ...j,
                     state: "passed",
                     finished: Date.now() / 1000,
+                    peak: 192 * 1048576,
+                    exit_code: 0,
                     meta: {
                       ...j.meta,
                       label: "Título extenso ".repeat(40),
@@ -411,6 +441,10 @@ test(
         () => !document.getElementById("dialog-message").textContent,
       );
       assert.equal(await body.textContent(), held);
+      assert.equal(
+        await page.locator("#suite-summary").innerText(),
+        "ExUnit · 22 testes, 0 falhas",
+      );
       assert.equal(await body.evaluate((e) => e.scrollTop), 80);
       await page.getByRole("button", { name: "Ir ao fim" }).click();
       await body.getByText(/Fim do teste/).waitFor();
@@ -423,6 +457,10 @@ test(
           .evaluate(
             (el) => el.scrollTop > 0 && el.scrollHeight > el.clientHeight,
           ),
+      );
+      assert.equal(
+        await page.locator("#reader-resources").innerText(),
+        "Pico de RAM 192 MiB · Código de saída 0",
       );
       const readsAtFinish = readCount;
       await refresh();

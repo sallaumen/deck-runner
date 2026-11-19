@@ -136,6 +136,19 @@
     "(min-width: 720px) and (max-height: 600px) and (min-aspect-ratio: 6/5)",
   );
   shortDisplay.addEventListener("change", render);
+  let order = "count";
+  const choices = document.querySelectorAll("[data-order]");
+  for (const button of choices)
+    button.onclick = () => {
+      order = button.dataset.order;
+      for (const item of choices) {
+        if (item === button)
+          item.parentElement.setAttribute("aria-sort", "descending");
+        else item.parentElement.removeAttribute("aria-sort");
+      }
+      pages.delete("activity-totals");
+      render();
+    };
   const legendPage = pager("legend-pages", render);
   function render() {
     if (!sample) return;
@@ -149,6 +162,7 @@
       }))
       .sort(
         (a, b) =>
+          b[order] - a[order] ||
           b.count - a.count ||
           b.runtime - a.runtime ||
           a.name.localeCompare(b.name),
@@ -194,8 +208,13 @@
       const result = await response.json();
       if (request !== pending) return;
       sample = result;
-      for (const row of result.projects)
-        projectColors.set(row.name, color(row));
+      let inksChanged = false;
+      for (const row of result.projects) {
+        const ink = color(row);
+        if (projectColors.get(row.name) !== ink) inksChanged = true;
+        projectColors.set(row.name, ink);
+      }
+      if (inksChanged) document.dispatchEvent(new Event("station-colors"));
       render();
       status.hidden = true;
     } catch {
@@ -235,6 +254,7 @@
       }, 1200);
   });
   byId("filter").addEventListener("change", render);
+  document.addEventListener("station-filter", render);
   function suspend() {
     clearTimeout(timer);
     clearTimeout(chartUpdate);
