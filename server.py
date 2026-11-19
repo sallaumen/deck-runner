@@ -725,6 +725,7 @@ class Handler(http.server.BaseHTTPRequestHandler):
             if path in (
                 "/assets/dashboard.css",
                 "/assets/dashboard.js",
+                "/assets/controller.js",
                 "/assets/icon.svg",
             ):
                 asset = assets / path.split("/")[-1]
@@ -734,6 +735,8 @@ class Handler(http.server.BaseHTTPRequestHandler):
                     ".svg": "image/svg+xml",
                 }[asset.suffix]
                 return self.send(asset.read_bytes(), mime + "; charset=utf-8")
+            if path == "/api/boot":
+                return self.send(Path("/proc/sys/kernel/random/boot_id").read_text().strip(), "text/plain")
             if path == "/api/status":
                 return self.send(json.dumps(status()), "application/json")
             if path.startswith("/logs/"):
@@ -773,6 +776,15 @@ class Handler(http.server.BaseHTTPRequestHandler):
             setting("paused", "1")
         elif self.path == "/resume":
             setting("paused", "0")
+        elif self.path == "/display/close":
+            try:
+                subprocess.run(
+                    ["systemctl", "--user", "stop", "--no-block", "deck-runner-display.service"],
+                    check=True, timeout=5,
+                )
+            except (OSError, subprocess.SubprocessError):
+                return self.send("Display unavailable", code=503)
+            return self.send("", code=204)
         elif self.path.startswith("/cancel/"):
             cancel(self.path.removeprefix("/cancel/"))
         else:

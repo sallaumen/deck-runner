@@ -323,6 +323,7 @@ def main():
     sub.add_parser(
         "doctor", help="Check SSH, the executor and the local dashboard tunnel"
     )
+    sub.add_parser("video-status", help="Check Steam Link video and automatic reconnection on this Mac")
     sub.add_parser("open")
     args = parser.parse_args()
     if args.action == "projects":
@@ -357,6 +358,10 @@ def main():
             f.seek(0)
             print(json.dumps(call("register", stdin=f), ensure_ascii=False))
         return
+    if args.action == "video-status":
+        from mac.link_status import diagnose
+
+        return diagnose()
     if args.action == "doctor":
         print(f"SSH → {HOST}", flush=True)
         remote = call("status")

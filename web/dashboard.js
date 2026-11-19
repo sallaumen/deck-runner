@@ -152,6 +152,14 @@ function render() {
     ">" +
     (j.cancel ? "Cancelando…" : "Cancelar") +
     "</button>";
+  const jobTitle = (job) =>
+    display
+      ? '<a class="job-title" href="/logs/' +
+        esc(job.id) +
+        '">' +
+        esc(job.meta.label) +
+        "</a>"
+      : esc(job.meta.label);
   const links = (j) =>
     '<div class="links hide-display"><a href="/logs/' +
     esc(j.id) +
@@ -166,7 +174,7 @@ function render() {
       .map(
         (j) =>
           '<div class="job"><div class="jobhead"><strong><i class="signal"></i>' +
-          esc(j.meta.label) +
+          jobTitle(j) +
           "</strong><time>" +
           duration(Date.now() / 1000 - j.started) +
           "</time></div><p>" +
@@ -192,7 +200,7 @@ function render() {
       .map(
         (j) =>
           '<div class="queued"><strong>' +
-          esc(j.meta.label) +
+          jobTitle(j) +
           "</strong><small>" +
           esc(j.meta.project) +
           " · " +
@@ -248,7 +256,7 @@ async function refresh() {
     const focus = document.activeElement;
     const previous = focus?.dataset.cancel
       ? '[data-cancel="' + CSS.escape(focus.dataset.cancel) + '"]'
-      : focus?.matches("#history a, .links a")
+      : focus?.matches("#history a, .links a, .job-title")
         ? 'a[href="' + CSS.escape(focus.getAttribute("href")) + '"]'
         : null;
     render();
@@ -271,6 +279,7 @@ async function refresh() {
       "Tentando reconectar ao Deck. Os dados exibidos são da última leitura.";
   } finally {
     pending = false;
+    document.dispatchEvent(new Event("station-refresh"));
   }
 }
 async function action(path) {

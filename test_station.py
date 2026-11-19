@@ -1,6 +1,8 @@
 import contextlib
 import http.client
+import io
 import json
+import subprocess
 import tempfile
 import threading
 import unittest
@@ -12,6 +14,7 @@ from unittest.mock import patch
 import display
 import server
 import settings
+from mac import link_status
 
 
 class HttpTest(unittest.TestCase):
@@ -47,6 +50,7 @@ class HttpTest(unittest.TestCase):
             "/",
             "/assets/dashboard.css",
             "/assets/dashboard.js",
+            "/assets/controller.js",
             "/assets/icon.svg",
         ]:
             code, headers, body = self.request(url)
@@ -67,6 +71,22 @@ class HttpTest(unittest.TestCase):
             self.assertEqual(self.request(route, "POST", form, headers)[0], 303)
             self.assertIs(json.loads(self.request("/api/status")[2])["paused"], flag)
 
+    def test_close_only_stops_display_and_requires_same_origin_and_token(self):
+        headers = {"Origin": f"http://127.0.0.1:{self.http.server_port}"}
+        form = urllib.parse.urlencode({"token": server.TOKEN})
+        with patch.object(server.subprocess, "run") as stop:
+            self.assertEqual(self.request("/display/close", "GET")[0], 404)
+            self.assertEqual(self.request("/display/close", "POST", form)[0], 403)
+            self.assertEqual(self.request("/display/close", "POST", "token=bad", headers)[0], 403)
+            stop.assert_not_called()
+            self.assertEqual(self.request("/display/close", "POST", form, headers)[0], 204)
+            stop.assert_called_once_with(
+                ["systemctl", "--user", "stop", "--no-block", "deck-runner-display.service"],
+                check=True, timeout=5,
+            )
+            stop.side_effect = OSError("systemd unavailable")
+            self.assertEqual(self.request("/display/close", "POST", form, headers)[0], 503)
+
     def test_old_bookmarks_keep_the_path_on_the_new_station(self):
         redirect = self.serve(server.LegacyRedirect)
         code, headers, _ = self.request("/?screen=1", station=redirect)
@@ -82,6 +102,42 @@ class HttpTest(unittest.TestCase):
         for value in ["", "-F", "with space", "ssh://host"]:
             with self.assertRaises(ValueError):
                 settings.valid_host(value)
+
+
+class VideoStatusTest(unittest.TestCase):
+    def test_signed_probe_reads_state_and_keeps_window_titles_private(self):
+        def respond(args, **_kwargs):
+            Path(args[args.index("--stdout") + 1]).write_text(
+                "accessibility=true boot=true window=Personal document [Streaming]\n"
+            )
+            self.assertEqual(args[-1], "--status")
+
+        with patch.object(subprocess, "run", side_effect=respond):
+            self.assertEqual(link_status.probe(Path("/example.app")), (True, True, True))
+
+    def test_open_close_and_reopen_are_read_only(self):
+        self.enterContext(patch.object(link_status.sys, "platform", "darwin"))
+        self.enterContext(patch.object(Path, "is_dir", return_value=True))
+        for opened, streaming, access, title in (
+            (False, False, True, "Steam Link fechado"),
+            (True, False, True, "Steam Link aberto"),
+            (True, True, True, "Transmitindo"),
+            (True, False, False, "autorize Acessibilidade"),
+        ):
+            with self.subTest(title=title):
+                commands = [
+                    subprocess.CompletedProcess([], 0, stdout="\tstate = running\n"),
+                    subprocess.CompletedProcess([], 0 if opened else 1),
+                ]
+                with (
+                    patch.object(link_status, "probe", return_value=(access, True, streaming)),
+                    patch.object(subprocess, "run", side_effect=commands) as run,
+                    contextlib.redirect_stdout(io.StringIO()) as out,
+                ):
+                    code = link_status.diagnose()
+                self.assertIn(title, out.getvalue().splitlines()[0])
+                self.assertEqual(code, 0 if access else 1)
+                self.assertEqual([c.args[0][0] for c in run.call_args_list], ["launchctl", "pgrep"])
 
 
 class DisplayTest(unittest.TestCase):

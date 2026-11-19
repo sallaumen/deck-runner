@@ -20,6 +20,7 @@
       <div class="top-actions">
         <span id="connection" class="status" role="status">Conectando…</span
         ><a class="button" id="switch" href="/?screen=1">Tela do Deck</a>
+        <button id="leave" hidden>Fechar painel</button>
       </div>
     </header>
     <main>
@@ -103,7 +104,28 @@
         </div>
       </div>
     </main>
-    <footer><span>Steam Deck</span><time id="updated"></time></footer>
+    <footer>
+      <span>Steam Deck</span>
+      <span id="pad-help" hidden>Direcional move · A seleciona · B volta</span>
+      <time id="updated"></time>
+    </footer>
+    <dialog id="station-dialog" aria-labelledby="dialog-title">
+      <h2 id="dialog-title"></h2>
+      <p id="dialog-context" hidden></p>
+      <pre
+        id="dialog-log"
+        aria-label="Saída da tarefa"
+        tabindex="0"
+        hidden
+      ></pre>
+      <p id="dialog-message" role="status"></p>
+      <div class="dialog-actions">
+        <button id="log-end" hidden>Ir ao fim</button>
+        <button id="dialog-back">Voltar</button>
+        <button id="confirm-leave" hidden>Fechar painel</button>
+      </div>
+    </dialog>
     <script src="/assets/dashboard.js"></script>
+    <script src="/assets/controller.js"></script>
   </body>
 </html>
