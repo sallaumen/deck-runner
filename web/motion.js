@@ -165,6 +165,12 @@
   document.addEventListener("station-change", event => {
     if (document.hidden || !event.detail || mode!=="arcade" || document.querySelector("dialog[open]")) return;
     const { jobs, previous } = event.detail;
+    const busy=j=>j.state==="running" || j.state==="queued";
+    if (!reduced.matches && !data.paused && data.alive && previous.jobs.some(busy) && !data.jobs.some(busy)) {
+      const slots=Array.from(byId("slots").children);
+      slots.forEach((slot,index)=>slot.animate([{opacity:.35},{backgroundColor:"#b4ebdc",opacity:.85,offset:.28},{opacity:1}],
+        {duration:480,delay:Math.round(180*index/Math.max(1,slots.length-1)),easing:"cubic-bezier(.15,.7,.23,1)"}));
+    }
     if (!reduced.matches) {
       const completed=new Set(jobs.filter(j=>Object.hasOwn(verdicts,j.state)).map(j=>j.id));
       for(const segment of byId("trend").children) if(completed.has(segment.dataset.resultId)) {
