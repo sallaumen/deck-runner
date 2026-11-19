@@ -40,6 +40,13 @@
     byId("fx-verdict").textContent = verdict.title;
     byId("fx-symbol").textContent = verdict.symbol;
     byId("fx-job-name").textContent = job.meta.label;
+    const time=byId("fx-elapsed");
+    const seconds=Number.isFinite(job.started) && Number.isFinite(job.finished) ? Math.max(0,Math.round(job.finished-job.started)) : null;
+    time.hidden = seconds===null;
+    if (seconds!==null) {
+      time.dateTime="PT"+seconds+"S";
+      time.textContent=seconds>=60 ? Math.floor(seconds/60)+"m "+String(seconds%60).padStart(2,"0")+"s" : seconds+"s";
+    }
     showFor(node,3200);
     byId("fx-sparks").replaceChildren();
     if (job.state==="passed" && !reduced.matches) victorySparks();
