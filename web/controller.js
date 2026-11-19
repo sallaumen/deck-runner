@@ -40,6 +40,14 @@
     if (document.hidden || !dialog.open || !view) return;
     const job = data?.jobs.find((j) => j.id === view.id);
     const live = job?.state === "running" || job?.state === "queued";
+    const resources = byId("reader-resources");
+    const facts = [];
+    if (Number.isFinite(job?.peak) && job.peak > 0)
+      facts.push("Pico de RAM " + Math.ceil(job.peak / 1048576) + " MiB");
+    if (!live && Number.isInteger(job?.exit_code))
+      facts.push("Código de saída " + job.exit_code);
+    resources.textContent = facts.join(" · ");
+    resources.hidden = !facts.length;
     const timer = byId("reader-clock");
     const timed =
       Number.isFinite(job?.started) &&
@@ -204,6 +212,7 @@
     heading.removeAttribute("data-scroll");
     byId("dialog-title").textContent = "Voltar à área de trabalho?";
     note.textContent = "Os testes continuam rodando no Deck.";
+    byId("reader-resources").hidden = true;
     context.hidden = log.hidden = end.hidden = true;
     confirm.hidden = false;
     dialog.showModal();
