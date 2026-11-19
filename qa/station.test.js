@@ -111,6 +111,10 @@ test(
       await diskButton.click();
       await page.locator("#storage-projects tr").first().waitFor();
       const diskDialog = page.locator("#storage-dialog");
+      assert.match(
+        await page.locator("#disk-headroom").innerText(),
+        /de margem para novos testes/,
+      );
       const diskParts = ["#storage-dialog", "#storage-back", "#clean-storage"];
       const diskBefore = await boxes(diskParts);
       const clean = diskDialog.getByRole("button", { name: "Limpar cópias" });

@@ -1555,6 +1555,13 @@ footer {
 #storage-feedback {
   color: var(--muted);
 }
+#disk-headroom {
+  color: var(--mint);
+  font-weight: 600;
+}
+#disk-headroom.low-space {
+  color: var(--warm);
+}
 .storage-policy {
   font-size: 14px;
   margin-bottom: 4px;
