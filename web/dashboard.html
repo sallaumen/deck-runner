@@ -36,6 +36,9 @@
         <div class="capacity">
           <div class="capacity-title">
             <h2>Ocupação do Deck</h2>
+            <button id="edit-limits" aria-haspopup="dialog" disabled>
+              Ajustar vagas
+            </button>
             <strong id="usage">—</strong>
           </div>
           <div class="slots" id="slots" aria-hidden="true"></div>
@@ -149,6 +152,62 @@
       <span id="pad-help" hidden>Direcional move · A seleciona · B volta</span>
       <time id="updated"></time>
     </footer>
+    <dialog id="limits-dialog" aria-labelledby="limits-title">
+      <h2 id="limits-title">Ajustar vagas</h2>
+      <p class="limit-intro">Quantos testes podem rodar ao mesmo tempo?</p>
+      <div class="limit-row" role="group" aria-labelledby="total-label">
+        <strong id="total-label">No Deck</strong>
+        <div class="stepper">
+          <button
+            data-step="-1"
+            data-field="slots"
+            aria-label="Diminuir vagas no Deck"
+          >
+            −
+          </button>
+          <output id="draft-slots" aria-labelledby="total-label"></output>
+          <button
+            data-step="1"
+            data-field="slots"
+            aria-label="Aumentar vagas no Deck"
+          >
+            +
+          </button>
+        </div>
+      </div>
+      <div class="limit-row" role="group" aria-labelledby="project-label">
+        <strong id="project-label">Por projeto</strong>
+        <div class="stepper">
+          <button
+            data-step="-1"
+            data-field="project_slots"
+            aria-label="Diminuir vagas por projeto"
+          >
+            −
+          </button>
+          <output
+            id="draft-project_slots"
+            aria-labelledby="project-label"
+          ></output>
+          <button
+            data-step="1"
+            data-field="project_slots"
+            aria-label="Aumentar vagas por projeto"
+          >
+            +
+          </button>
+        </div>
+      </div>
+      <p class="limit-info">
+        <b id="limit-ram"></b> A fila aguarda quando falta memória. Reduzir as
+        vagas deixa os testes em andamento terminarem.
+      </p>
+      <p id="limit-feedback" role="status"></p>
+      <div class="dialog-actions">
+        <button id="dismiss-limits">Voltar</button>
+        <button id="save-limits">Aplicar</button>
+      </div>
+    </dialog>
     <dialog id="station-dialog" aria-labelledby="dialog-title">
       <h2 id="dialog-title"></h2>
       <p id="dialog-context" hidden></p>
@@ -167,6 +226,7 @@
     </dialog>
     <script src="/assets/dashboard.js"></script>
     <script src="/assets/activity.js"></script>
+    <script src="/assets/limits.js"></script>
     <script src="/assets/controller.js"></script>
   </body>
 </html>

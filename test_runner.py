@@ -66,6 +66,64 @@ class QueueTest(unittest.TestCase):
         server.update("0" * 12, state="passed", finished=time.time())
         self.assertEqual(server.claim(), f"{3:012x}")
 
+    def test_higher_limits_and_lowering_during_work(self):
+        def change(total, per_project, old_total, old_project):
+            return server.change_limits({key: [str(n)] for key, n in (
+                ("slots", total), ("project_slots", per_project),
+                ("previous_slots", old_total), ("previous_project_slots", old_project),
+            )})[0]
+        for i, project in enumerate(["catalogue"] * 7 + ["second"] * 3):
+            self.add(f"{i:012x}", i, project)
+        with (
+            patch.object(server, "pool_budget", return_value=10240),
+            patch.object(server, "available_memory", return_value=13 * server.GIB),
+        ):
+            self.assertTrue(change(8, 5, 5, 3))
+            with concurrent.futures.ThreadPoolExecutor(max_workers=10) as pool:
+                claimed = [job for job in pool.map(lambda _: server.claim(), range(10)) if job]
+            self.assertEqual(len(claimed), 8)
+            self.assertEqual(sorted(json.loads(server.jobrow(j)["meta"])["lane"]
+                                    for j in claimed if int(j, 16) < 7), list(range(5)))
+            self.assertTrue(change(3, 2, 8, 5))
+            self.assertIn("limite de 3", server.status()["reason"])
+            self.assertIsNone(server.claim())
+            for i in (0, 1, 2, 7, 8, 9):
+                server.update(f"{i:012x}", state="passed", finished=time.time())
+            self.assertIsNone(server.claim())
+            self.assertIn("por projeto", server.status()["reason"])
+            server.update(f"{3:012x}", state="passed", finished=time.time())
+            self.assertEqual(server.claim(), f"{5:012x}")
+            self.assertEqual(json.loads(server.jobrow(f"{5:012x}")["meta"])["lane"], 0)
+            self.assertEqual(server.jobrow(f"{4:012x}")["state"], "running")
+
+    def test_pool_tracks_slots_and_respects_kernel_and_desktop_limits(self):
+        root = Path(self.temp.name)
+        parent = root / "parent"
+        leaf = parent / "tests"
+        leaf.mkdir(parents=True)
+        (parent / "memory.max").write_text("max")
+        with patch.object(server, "CGROUP_ROOT", root), patch.object(server, "DECK_SLICE", leaf):
+            self.assertEqual(server.pool_budget(8), 7680)
+            (leaf / "memory.max").write_text(str(12 * server.GIB))
+            self.assertEqual(server.pool_budget(5), 7680)
+            self.assertEqual(server.pool_budget(8), 10240)
+            (parent / "memory.max").write_text(str(9 * server.GIB))
+            self.assertEqual(server.pool_budget(8), 8704)
+            with patch.object(server, "available_memory", return_value=3 * server.GIB):
+                self.assertEqual(server.capacity_bytes([], server.pool_budget(8)), 1536 * server.MIB)
+
+    def test_eight_configured_still_waits_for_real_memory(self):
+        server.setting("slots", "[8, 5]")
+        for i in range(9):
+            self.add(f"{i:012x}", i, "catalogue" if i % 2 else "second")
+        with (
+            patch.object(server, "available_memory", return_value=9 * server.GIB),
+            patch.object(server, "pool_budget", return_value=10240),
+        ):
+            claimed = [server.claim() for _ in range(8)]
+            self.assertEqual(len(list(filter(None, claimed))), 6)
+            self.assertIn("memória", server.status()["reason"])
+
     def test_simultaneous_admission_reserves_unused_memory(self):
         self.add("a" * 12, 1)
         self.add("b" * 12, 2)

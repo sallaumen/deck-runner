@@ -71,6 +71,57 @@ test(
       await page.unroute("**/api/activity?hours=6");
       await period.selectOption("24");
       await page.locator("#request-plot polyline").first().waitFor();
+      const adjust = page.getByRole("button", { name: "Ajustar vagas" });
+      const apply = page.getByRole("button", { name: "Aplicar", exact: true });
+      await adjust.click();
+      await page
+        .getByRole("button", { name: "Aumentar vagas no Deck" })
+        .click();
+      assert.ok(await apply.isDisabled(), "preview is read-only");
+      await page.getByRole("button", { name: "Voltar", exact: true }).click();
+
+      let live = { ...sample, instance: "qa" };
+      await page.route("**/api/status", (route) =>
+        route.fulfill({ json: live }),
+      );
+      await page.evaluate(() => refresh());
+      await adjust.click();
+      for (let i = 0; i < 3; i++)
+        await page.getByLabel("Aumentar vagas no Deck").click();
+      for (let i = 0; i < 2; i++)
+        await page.getByLabel("Aumentar vagas por projeto").click();
+      let postCount = 0;
+      await page.route("**/limits", (route) => {
+        const body = new URLSearchParams(route.request().postData());
+        assert.equal(route.request().method(), "POST");
+        assert.equal(body.get("slots"), "8");
+        assert.equal(body.get("project_slots"), "5");
+        assert.equal(body.get("previous_slots"), "5");
+        postCount++;
+        live = { ...live, slots: 8, project_slots: 5 };
+        return route.fulfill({ json: { slots: 8, project_slots: 5 } });
+      });
+      await apply.click();
+      await page.locator("#usage").getByText("2 / 8").waitFor();
+      assert.equal(postCount, 1);
+      await page.reload();
+      await page
+        .locator("#policy")
+        .getByText(/5 execuções/)
+        .waitFor();
+      await adjust.click();
+      await page.getByLabel("Diminuir vagas por projeto").click();
+      await page.unroute("**/limits");
+      await page.route("**/limits", (route) =>
+        route.fulfill({ status: 409, json: { slots: 7, project_slots: 3 } }),
+      );
+      await apply.click();
+      await page.getByText(/Os limites mudaram/).waitFor();
+      assert.equal(await page.locator("#draft-slots").innerText(), "7");
+      await page.keyboard.press("Escape");
+      await page.unroute("**/limits");
+      await page.unroute("**/api/status");
+      await page.evaluate(() => refresh());
       let [width, viewport, bottom] = await dimensions();
       assert.equal(width, viewport);
       assert.ok(
@@ -92,7 +143,7 @@ test(
       assert.equal(width, viewport);
       await page.getByRole("link", { name: "Log", exact: true }).click();
       await page
-        .locator("dialog")
+        .locator("#station-dialog")
         .getByText(/resultado é fictício/)
         .waitFor();
       assert.equal(new URL(page.url()).pathname, "/");
@@ -139,7 +190,7 @@ test(
         true,
       );
       await page.keyboard.press("Escape");
-      assert.equal(await page.locator("dialog").isVisible(), false);
+      assert.equal(await page.locator("#station-dialog").isVisible(), false);
       await page.getByRole("link", { name: "Abrir controles" }).click();
       assert.equal(new URL(page.url()).searchParams.get("station"), "1");
       await page.locator("#history a").first().click();
@@ -175,15 +226,27 @@ test(
           await tick();
         }, input);
       }
+      await page.locator("#edit-limits").focus();
+      await gamepad(0);
+      await page.locator("#limits-dialog[open]").waitFor();
+      await gamepad(0);
+      assert.equal(await page.locator("#draft-slots").innerText(), "6");
+      await gamepad(1);
+      assert.ok(!(await page.locator("#limits-dialog").isVisible()));
+      assert.equal(
+        await page.evaluate(() => document.activeElement.id),
+        "edit-limits",
+      );
+      await page.locator("#switch").focus();
       await gamepad("right");
       assert.equal(
         await page.evaluate(() => document.activeElement.id),
         "leave",
       );
       await gamepad(0);
-      assert.equal(await page.locator("dialog").isVisible(), true);
+      assert.equal(await page.locator("#station-dialog").isVisible(), true);
       await gamepad(1);
-      assert.equal(await page.locator("dialog").isVisible(), false);
+      assert.equal(await page.locator("#station-dialog").isVisible(), false);
       await gamepad(1);
       let closed = 0;
       await page.route("**/display/close", (route) => {
@@ -269,7 +332,7 @@ test(
         (href) => document.activeElement.getAttribute("href") === href,
         logPath,
       );
-      assert.equal(await page.locator("dialog").isVisible(), false);
+      assert.equal(await page.locator("#station-dialog").isVisible(), false);
       assert.deepEqual(errors, []);
     } finally {
       try {

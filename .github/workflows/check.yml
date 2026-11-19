@@ -14,7 +14,7 @@ jobs:
         with:
           python-version: ${{ matrix.python }}
       - run: python -m unittest discover -v
-      - run: node --check web/dashboard.js && node --check web/controller.js && node --check web/activity.js
+      - run: node --check web/dashboard.js && node --check web/controller.js && node --check web/activity.js && node --check web/limits.js
       - run: shellcheck open-panel.sh run-project.sh
       - run: python -m compileall -q scripts
   interface:

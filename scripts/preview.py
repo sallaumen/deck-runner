@@ -10,7 +10,7 @@ import time
 from urllib.parse import urlsplit
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
-from server import Handler
+from server import Handler, MAX_SLOTS
 from activity import summarize
 
 
@@ -69,6 +69,7 @@ def sample(state):
         paused=state == "paused",
         reason="",
         slots=5,
+        max_slots=MAX_SLOTS,
         project_slots=3,
         available_memory=int(7.4 * 1024**3),
         disk_free=84 * 1024**3,
