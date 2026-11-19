@@ -547,7 +547,7 @@ function signalChanges(previous) {
         );
     }
   }
-  document.dispatchEvent(new Event("station-change"));
+  document.dispatchEvent(new CustomEvent("station-change", {detail: { jobs: changed, previous }}));
 }
 function fromStream() {
   if (pending) retryRefresh = true;
