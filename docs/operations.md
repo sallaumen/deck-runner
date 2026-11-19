@@ -25,7 +25,7 @@ O arquivo `~/.config/deck-runner/host` no Mac guarda o destino. O cliente també
 
 Ao entrar na área de trabalho do Plasma, o atalho de inicialização abre **Deck Runner**. Use o analógico esquerdo ou o direcional para mover o foco. **A** seleciona. **B** volta de um log ou abre a confirmação para fechar o painel. O botão **Fechar painel** também funciona com o toque, o mouse e o teclado. O atalho **Deck Runner** na área de trabalho reabre a janela. Para jogar, use o modo Big Picture no Steam ou o atalho do SteamOS para o modo de jogo.
 
-Na tela do Deck, alterne **Em execução** e **Na fila** à esquerda ou **Resultados** e **Projetos** à direita. Quando a lista ocupa mais de uma página, as setas junto ao título mostram os itens seguintes. A paginação dos totais por projeto mantém as linhas de todos os projetos nos gráficos.
+Na tela do Deck, alterne **Em execução** e **Na fila** à esquerda ou **Resultados** e **Projetos** à direita. Quando a lista ocupa mais de uma página, as setas junto ao título mostram os itens seguintes. Na aba **Projetos**, a lista começa pelos projetos com mais testes em execução. Em caso de empate, aparece primeiro quem tem mais tarefas na fila. A paginação dos totais por projeto mantém as linhas de todos os projetos nos gráficos.
 
 Durante os testes, o título mostra os projetos em execução. Se houver mais de dois, o número ao lado indica quantos outros estão ativos. Cada linha identifica a tarefa, o projeto, o agente e a última atividade informada pelo teste. O cronômetro usa o horário do Deck e conta os segundos entre as leituras da fila, inclusive quando o log está aberto. Quando a conexão cai, o relógio para. Ao reconectar, volta ao tempo do executor. Ao terminar, o log mostra a duração registrada.
 

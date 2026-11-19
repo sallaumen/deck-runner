@@ -397,8 +397,21 @@ function render() {
     room("work-space"),
     workView,
   );
+  const demand = new Map(
+    allNames.map((name) => [name, { running: 0, queued: 0 }]),
+  );
+  for (const job of [...active, ...queued]) {
+    const entry = demand.get(job.meta.project);
+    if (entry) entry[job.state]++;
+  }
+  const roster = [...allNames].sort(
+    (a, b) =>
+      demand.get(b).running - demand.get(a).running ||
+      demand.get(b).queued - demand.get(a).queued ||
+      a.localeCompare(b, "pt-BR"),
+  );
   const sideRows = archivePage(
-    archiveView === "history" ? results : allNames,
+    archiveView === "history" ? results : roster,
     room("archive-space"),
     archiveView,
   );
@@ -494,7 +507,7 @@ function render() {
       "projects",
       sideRows
         .map((n) => {
-          const count = active.filter((j) => j.meta.project === n).length;
+          const { running: count, queued: pending } = demand.get(n);
           return (
             '<div class="project"><strong title="' +
             esc(n) +
@@ -502,6 +515,9 @@ function render() {
             projectDot(n) +
             esc(n) +
             '</strong><span class="legend"><small>' +
+            (pending
+              ? '<b class="project-wait">' + pending + " na fila</b> · "
+              : "") +
             count +
             "/" +
             data.project_slots +
