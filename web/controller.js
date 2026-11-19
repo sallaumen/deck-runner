@@ -52,6 +52,16 @@
       { running: "Em execução", queued: "Na fila" }[job?.state] ||
       labels[job?.state] ||
       job?.state;
+    if (live || !job) delete dialog.dataset.readOutcome;
+    else {
+      const ink = job.state==="passed" ? "good" : ["cancelled","interrupted"].includes(job.state) ? "stopped" : "problem";
+      dialog.dataset.readOutcome=ink;
+      if (view.wasLive && document.documentElement.dataset.effects!=="off" && !matchMedia("(prefers-reduced-motion: reduce)").matches) {
+        const color={good:"#aaf5d2",stopped:"#ffbd78",problem:"#ffac9b"}[ink];
+        context.animate([{color},{color:"var(--muted)"}],{duration:980});
+      }
+    }
+    view.wasLive=live;
     const title =
       job?.meta.label || (view.isLog ? "Log da tarefa" : "Detalhes da tarefa");
     if (byId("dialog-title").textContent !== title)
