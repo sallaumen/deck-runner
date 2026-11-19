@@ -47,17 +47,32 @@
             ></p>
             <p id="run-context" hidden></p>
           </div>
-          <h1 id="summary">
-            <span class="runner-emblem" aria-hidden="true" hidden
-              ><i class="fx-pilot"></i
-            ></span>
-            <span id="summary-name">Conectando…</span>
-            <span id="summary-more" hidden></span>
-          </h1>
-          <div class="bay-caption">
-            <a id="bay-job" hidden
-              ><span id="bay-owner"></span><span id="bay-label"></span
-            ></a>
+          <div class="bay-readout">
+            <h1 id="summary">
+              <span class="runner-emblem" aria-hidden="true" hidden
+                ><i class="fx-pilot"></i
+              ></span>
+              <span id="summary-name">Conectando…</span>
+              <span id="summary-more" hidden></span>
+            </h1>
+            <div class="bay-caption">
+              <a id="bay-job" hidden
+                ><span id="bay-owner"></span><span id="bay-label"></span
+              ></a>
+            </div>
+            <div id="crew" hidden>
+              <div
+                id="crew-lines"
+                role="group"
+                aria-label="Execuções na doca"
+              ></div>
+              <div
+                class="pager"
+                id="crew-pages"
+                aria-label="Páginas da doca"
+                hidden
+              ></div>
+            </div>
           </div>
           <p class="metrics">
             <span>RAM livre <b id="ram">—</b></span
@@ -248,7 +263,9 @@
         >Steam Deck
         <button id="fx-settings" aria-haspopup="dialog">Efeitos</button></span
       >
-      <span id="pad-help" hidden>Direcional move · A seleciona · B volta</span>
+      <span id="pad-help" hidden
+        >Direcional move · <kbd>A</kbd> seleciona · <kbd>B</kbd> volta</span
+      >
       <time id="updated"></time>
     </footer>
     <dialog id="storage-dialog" aria-labelledby="storage-title">

@@ -54,6 +54,7 @@ class HttpTest(unittest.TestCase):
             "/assets/motion.css",
             "/assets/station.css",
             "/assets/gantry.webp",
+            "/assets/cargo.webp",
             "/assets/pilot.png",
             "/assets/controller.js",
             "/assets/activity.js",
@@ -64,7 +65,7 @@ class HttpTest(unittest.TestCase):
             self.assertEqual(code, 200)
             self.assertIn("frame-ancestors 'none'", headers["Content-Security-Policy"])
             self.assertTrue(body)
-            if url == "/assets/gantry.webp":
+            if url.endswith(".webp"):
                 self.assertEqual(headers["Content-Type"], "image/webp")
                 self.assertEqual(body[8:12], b"WEBP")
         self.assertEqual(

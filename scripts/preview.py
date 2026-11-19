@@ -68,7 +68,7 @@ def sample(state):
         )
     return dict(
         jobs=jobs,
-        projects=[{"name": p} for p in projects],
+        projects=[{"name": p, "color": i} for i, p in enumerate(projects)],
         alive=True,
         paused=state == "paused",
         reason="",

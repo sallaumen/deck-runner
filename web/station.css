@@ -305,7 +305,7 @@
   }
   .display #fx-launch-name {
     font:
-      750 clamp(22px, 2.6vw, 38px)/1.03 system-ui,
+      750 clamp(22px, 2.6vw, 38px) / 1.03 system-ui,
       sans-serif;
     letter-spacing: -0.035em;
     color: #18263c;
@@ -529,4 +529,391 @@ body:has(dialog[open]) .bay *,
       transparent 88%
     );
   }
+}
+
+/* The roster swaps into the idle readout's reserved space. Each berth opens its own log. */
+.bay-readout {
+  display: contents;
+}
+.display .bay-readout {
+  position: relative;
+  display: grid;
+  align-content: center;
+  min-width: 0;
+  height: clamp(76px, 11dvh, 92px);
+}
+.display .bay-readout:has(#crew:not([hidden])) #summary {
+  opacity: 0;
+}
+#crew {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+#crew[hidden],
+#crew-pages[hidden] {
+  display: none;
+}
+#crew-lines {
+  display: grid;
+  width: 78%;
+  min-width: 0;
+  gap: 4px;
+}
+.crew-line {
+  --crew-ink: var(--mint);
+  display: grid;
+  position: relative;
+  grid-template-columns: minmax(0, 1.02fr) minmax(0, 0.96fr) minmax(0, 1.74fr);
+  align-items: center;
+  gap: 12px;
+  padding: 0 12px 0 21px;
+  min-height: 36px;
+  border: 1px solid color-mix(in srgb, var(--crew-ink) 48%, #19263a);
+  border-radius: 2px 10px 2px 2px;
+  background: linear-gradient(
+    100deg,
+    color-mix(in srgb, var(--crew-ink) 19%, #0c1727),
+    #111c2af5 72%
+  );
+  color: #f3f6f5;
+  text-decoration: none;
+}
+.crew-line::before {
+  content: "";
+  position: absolute;
+  left: 6px;
+  width: 6px;
+  height: 14px;
+  background: var(--crew-ink);
+  clip-path: polygon(
+    0 0,
+    50% 0,
+    50% 25%,
+    100% 25%,
+    100% 75%,
+    50% 75%,
+    50% 100%,
+    0 100%
+  );
+}
+.crew-line > * {
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+.crew-line strong {
+  color: var(--crew-ink);
+  font-size: clamp(17px, 1.8vw, 25px);
+  line-height: 1.15;
+  letter-spacing: -0.035em;
+}
+.crew-owner {
+  font-size: clamp(14px, 1.22vw, 18px);
+  font-weight: 680;
+}
+.crew-task {
+  color: #d5e0ea;
+  font-size: clamp(14px, 1.18vw, 18px);
+}
+.crew-line:hover,
+.crew-line.continues {
+  border-color: var(--crew-ink);
+}
+#crew[data-single="true"] .crew-line {
+  min-height: 55px;
+}
+.crew-line.continues::before {
+  height: 12px;
+  width: 9px;
+  clip-path: polygon(
+    0 0,
+    38% 0,
+    38% 20%,
+    72% 20%,
+    72% 38%,
+    100% 38%,
+    100% 62%,
+    72% 62%,
+    72% 80%,
+    38% 80%,
+    38% 100%,
+    0 100%
+  );
+}
+#crew-pages {
+  margin: 0;
+  align-self: flex-end;
+  background: #101c2d;
+  border: 1px solid var(--edge);
+  border-radius: 3px;
+}
+#crew-pages button {
+  min-width: 30px;
+}
+.display:has(.crew-line.continues) #run-context {
+  color: #e9ffe5;
+}
+
+/* Cargo bay, flight recorder and two instrument displays share the station's metalwork. */
+header {
+  background: linear-gradient(110deg, #14263a, #101a29 42%, #152132);
+  border-bottom-color: #40546a;
+  box-shadow: inset 0 -3px #101822;
+}
+.brand img {
+  image-rendering: pixelated;
+}
+.top-actions .button,
+.top-actions button,
+dialog button,
+.capacity button,
+#fx-settings {
+  border-radius: 3px 9px 3px 3px;
+  box-shadow: inset 0 -2px #08152680;
+}
+.board,
+.project-activity {
+  --instrument: #93efd2;
+  border-color: #384b61;
+  border-radius: 4px 14px 4px 4px;
+  background-color: #132031;
+}
+.archive {
+  --instrument: #ffc784;
+}
+.board-head {
+  background: linear-gradient(110deg, #243448, #182737 65%);
+  border-radius: 3px 13px 0 0;
+  border-color: #3a4c60;
+}
+.views button[aria-pressed="true"] {
+  color: var(--instrument);
+  background: linear-gradient(
+    0deg,
+    color-mix(in srgb, var(--instrument) 10%, transparent),
+    transparent 85%
+  );
+}
+.views button[aria-pressed="true"]::after {
+  height: 3px;
+  background: var(--instrument);
+  clip-path: polygon(0 0, 100% 0, calc(100% - 4px) 100%, 0 100%);
+}
+.display .work {
+  background: #101b2b url("/assets/cargo.webp") right bottom / auto
+    min(86%, 220px) no-repeat;
+}
+.display .work .board-head {
+  background-color: #1a2d40;
+}
+.display #work-space .task-row {
+  background-color: #142231f7;
+}
+.display #work-space .empty {
+  width: fit-content;
+  max-width: 90%;
+  color: #d1e0ea;
+  background: #101a2be8;
+}
+.display .archive {
+  background: linear-gradient(122deg, #182737, #101b29 80%);
+}
+.display .capacity {
+  background:
+    repeating-linear-gradient(118deg, transparent 0 5px, #ffffff05 5px 7px)
+      right top / 64px 7px no-repeat,
+    linear-gradient(115deg, #21314a, #162238 82%);
+}
+.activity-figure figcaption,
+.activity-heading h2 {
+  color: #e0f3f5;
+}
+.activity-figure figcaption::before {
+  content: "";
+  width: 12px;
+  height: 10px;
+  flex: none;
+  margin-right: 6px;
+  background: #84dcd1;
+  clip-path: polygon(
+    0 66%,
+    25% 66%,
+    25% 36%,
+    50% 36%,
+    50% 0,
+    74% 0,
+    74% 30%,
+    100% 30%,
+    100% 63%,
+    74% 63%,
+    74% 35%,
+    51% 35%,
+    51% 70%,
+    27% 70%,
+    27% 100%,
+    0 100%
+  );
+}
+.activity-figure figcaption strong {
+  margin-right: auto;
+}
+.activity-plot > svg {
+  background-color: #101c2b;
+  background-image: linear-gradient(90deg, #688eaa17 1px, transparent 1px);
+  background-size: 8.333% 100%;
+  box-shadow: inset 0 0 0 1px #324357;
+}
+.display .project-activity {
+  background: linear-gradient(130deg, #1a2a39, #111b29 68%);
+}
+.history-row .passed::before,
+.history-row .failed::before {
+  width: 9px;
+  height: 8px;
+  margin-right: 2px;
+  border-radius: 0;
+}
+.history-row .passed::before {
+  clip-path: polygon(
+    0 38%,
+    22% 38%,
+    22% 58%,
+    42% 58%,
+    42% 40%,
+    58% 40%,
+    58% 20%,
+    79% 20%,
+    79% 0,
+    100% 0,
+    100% 38%,
+    80% 38%,
+    80% 58%,
+    60% 58%,
+    60% 80%,
+    42% 80%,
+    42% 100%,
+    22% 100%,
+    22% 80%,
+    0 80%
+  );
+}
+.history-row .failed::before {
+  clip-path: polygon(
+    0 0,
+    25% 0,
+    50% 31%,
+    75% 0,
+    100% 0,
+    100% 25%,
+    70% 50%,
+    100% 75%,
+    100% 100%,
+    75% 100%,
+    50% 70%,
+    25% 100%,
+    0 100%,
+    0 75%,
+    30% 50%,
+    0 25%
+  );
+}
+.trend {
+  background: #101c2866;
+}
+#pad-help kbd {
+  display: inline-grid;
+  place-items: center;
+  width: 1.45em;
+  height: 1.45em;
+  color: #a7eece;
+  border: 1px solid #506b69;
+  border-radius: 50%;
+  font: inherit;
+}
+#pad-help kbd:last-child {
+  color: #ffc59e;
+  border-color: #806455;
+}
+dialog {
+  border-radius: 5px 16px 5px 5px;
+  border-color: #50657b;
+}
+@media (min-width: 720px) and (min-aspect-ratio: 6/5) and (max-height: 680px) {
+  .display .bay-readout {
+    height: 53px;
+  }
+  #crew-lines {
+    gap: 2px;
+  }
+  .crew-line {
+    min-height: 24px;
+    gap: 6px;
+  }
+  .crew-line strong {
+    font-size: 16px;
+  }
+  .crew-owner,
+  .crew-task {
+    font-size: 12px;
+  }
+  #crew[data-single="true"] .crew-line {
+    min-height: 36px;
+  }
+}
+@media (max-width: 719px), (max-aspect-ratio: 6/5) {
+  .display .bay-readout {
+    height: 112px;
+  }
+  #crew-lines {
+    width: 100%;
+  }
+  #crew:has(#crew-pages:not([hidden])) #crew-lines {
+    width: calc(100% - 50px);
+  }
+  #crew-pages {
+    align-self: center;
+    flex-direction: column;
+  }
+  #crew-pages button {
+    min-height: 27px;
+  }
+  .crew-line {
+    min-height: 49px;
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+    gap: 0 9px;
+    padding: 4px 9px 4px 19px;
+  }
+  .crew-task {
+    grid-column: 1 / -1;
+    font-size: 13px;
+  }
+  .crew-owner {
+    font-size: 13px;
+  }
+}
+
+@media (min-width: 720px) and (min-aspect-ratio: 6/5) and (min-height: 681px) {
+  #crew[data-dense="true"] #crew-lines {
+    gap: 2px;
+  }
+  #crew[data-dense="true"] .crew-line {
+    min-height: 26px;
+  }
+  #crew[data-dense="true"] strong {
+    font-size: 18px;
+  }
+}
+
+/* Keep identities legible while an announcement passes over the lower panels. */
+.display:has(.crew-line) #fx-launch {
+  top: clamp(175px, 32dvh, 325px);
+}
+.display:has(.crew-line.continues) #fx-stage .finish-field {
+  background: none;
+}
+.display:has(.crew-line.continues) .finish-field::before {
+  top: 40%;
 }

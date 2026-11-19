@@ -36,9 +36,11 @@ test(
       page.on("pageerror", (error) => errors.push(error.message));
       await page.addInitScript(() => {
         window.flights = 0;
+        window.handoffs = 0;
         const animate = Element.prototype.animate;
         Element.prototype.animate = function (frames, options) {
           if (options?.id === "bay-flight") window.flights++;
+          if (options?.id === "crew-continues") window.handoffs++;
           return animate.call(this, frames, options);
         };
         window.mediaStarts = 0;
@@ -121,7 +123,7 @@ test(
       assert.equal(await stride(), "working-stride");
       assert.equal(await page.evaluate(() => window.flights), 1);
       assert.equal(
-        await page.locator("#bay-job").getAttribute("href"),
+        await page.locator(".crew-line").getAttribute("href"),
         "/logs/" + jobs[1].id,
       );
       await update([
@@ -234,6 +236,66 @@ test(
         ),
       );
       assert.equal(await latest.evaluate((el) => el.getAnimations().length), 0);
+      await page.setViewportSize({ width: 1280, height: 800 });
+      const peer = job(91, "running", 16);
+      peer.meta = {
+        ...peer.meta,
+        project: "orbita",
+        owner: "Claude",
+        label: "Catálogo",
+      };
+      const sibling = job(92, "running", 17);
+      await update([active, peer, job(89, "running", 16), sibling]);
+      const lines = page.locator(".crew-line");
+      assert.deepEqual(await lines.locator("strong").allTextContents(), [
+        "estudio",
+        "orbita",
+        "estudio",
+      ]);
+      assert.deepEqual(await lines.nth(1).locator("span").allTextContents(), [
+        "Claude",
+        "Catálogo",
+      ]);
+      assert.notEqual(
+        await lines
+          .first()
+          .evaluate((el) => el.style.getPropertyValue("--crew-ink")),
+        await lines
+          .nth(1)
+          .evaluate((el) => el.style.getPropertyValue("--crew-ink")),
+      );
+      await page.locator("#crew-pages button").last().click();
+      assert.equal(
+        await lines.first().getAttribute("href"),
+        "/logs/" + sibling.id,
+      );
+      await update([
+        job(90, "passed", 18),
+        peer,
+        { ...sibling, state: "failed", finished: t + 18 },
+      ]);
+      assert.equal(await lines.count(), 1);
+      assert.equal(await lines.getAttribute("href"), "/logs/" + peer.id);
+      assert.match(await lines.getAttribute("class"), /continues/);
+      assert.equal(
+        await page.locator("#run-context").textContent(),
+        "1 teste continua em execução",
+      );
+      assert.equal(await lines.evaluate((el) => el.getAnimations().length), 0);
+      await page.emulateMedia({ reducedMotion: "no-preference" });
+      const remaining = job(93, "running", 19);
+      await update([peer, remaining]);
+      const beforeHandoff = await page.evaluate(() => window.handoffs);
+      await update([{ ...peer, state: "passed", finished: t + 20 }, remaining]);
+      assert.equal(
+        await page.evaluate(() => window.handoffs),
+        beforeHandoff + 1,
+      );
+      await update(jobs);
+      assert.equal(
+        await page.evaluate(() => window.handoffs),
+        beforeHandoff + 1,
+      );
       await page.route("**/api/status", (route) =>
         route.fulfill({ status: 503, body: "Offline" }),
       );
