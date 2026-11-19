@@ -376,7 +376,34 @@ function render() {
     : active.length
       ? "busy"
       : "idle";
-  byId("slots").innerHTML = bars(active.length, data.slots);
+  const slots = byId("slots");
+  const occupancy = new Map();
+  for (const job of active)
+    occupancy.set(job.meta.project, (occupancy.get(job.meta.project) || 0) + 1);
+  slots.setAttribute(
+    "aria-label",
+    active.length
+      ? "Ocupação por projeto. " +
+          [...occupancy].map(([name, n]) => name + ": " + n).join(", ")
+      : "Todas as vagas livres",
+  );
+  writeRows(
+    "slots",
+    active
+      .map((job) => {
+        const title = [job.meta.project, job.meta.label, job.meta.owner].join(
+          " · ",
+        );
+        return (
+          '<i class="used" title="' +
+          esc(title) +
+          '"><svg viewBox="0 0 1 1" preserveAspectRatio="none" aria-hidden="true"><rect width="1" height="1" fill="' +
+          esc(projectColors.get(job.meta.project) || "var(--mint)") +
+          '"/></svg></i>'
+        );
+      })
+      .join("") + bars(0, Math.max(0, data.slots - active.length)),
+  );
   byId("ram").textContent = gib(data.available_memory) + " GiB";
   byId("disk").textContent = gib(data.disk_free) + " GiB";
   updateHeadline(active, queued);
@@ -633,6 +660,9 @@ byId("filter").onchange = () => {
   pages.clear();
   if (data) render();
 };
+document.addEventListener("station-colors", () => {
+  if (data) render();
+});
 let layoutFrame = 0;
 const observer = new ResizeObserver(() => {
   cancelAnimationFrame(layoutFrame);

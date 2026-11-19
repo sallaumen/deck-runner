@@ -194,8 +194,13 @@
       const result = await response.json();
       if (request !== pending) return;
       sample = result;
-      for (const row of result.projects)
-        projectColors.set(row.name, color(row));
+      let inksChanged = false;
+      for (const row of result.projects) {
+        const ink = color(row);
+        if (projectColors.get(row.name) !== ink) inksChanged = true;
+        projectColors.set(row.name, ink);
+      }
+      if (inksChanged) document.dispatchEvent(new Event("station-colors"));
       render();
       status.hidden = true;
     } catch {
