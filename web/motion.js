@@ -155,8 +155,15 @@
     else {showResult(sample);byId("fx-run-id").textContent="PRÉVIA";}
   });
 
+  // Opening a log or an operator dialog gives that surface the user's attention.
+  const panels = document.querySelectorAll("dialog");
+  const dialogChanges = new MutationObserver(() => {
+    if(document.querySelector("dialog[open]")) resetEffects();
+  });
+  for (const panel of panels) dialogChanges.observe(panel,{attributes:true,attributeFilter:["open"]});
+
   document.addEventListener("station-change", event => {
-    if (document.hidden || !event.detail || mode!=="arcade") return;
+    if (document.hidden || !event.detail || mode!=="arcade" || document.querySelector("dialog[open]")) return;
     const { jobs, previous } = event.detail;
     const result = mainResult(jobs);
     if (result && display) presentResults(jobs);
