@@ -1507,7 +1507,7 @@ footer {
   width: 12em;
 }
 #storage-back {
-  min-width: 6em;
+  width: 7em;
 }
 @media (max-width: 719px), (max-aspect-ratio: 6/5) {
   #live-note {
