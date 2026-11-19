@@ -25,6 +25,8 @@ O arquivo `~/.config/deck-runner/host` no Mac guarda o destino. O cliente també
 
 Ao entrar na área de trabalho do Plasma, o atalho de inicialização abre **Deck Runner**. Use o analógico esquerdo ou o direcional para mover o foco. **A** seleciona. **B** volta de um log ou abre a confirmação para fechar o painel. O botão **Fechar painel** também funciona com o toque, o mouse e o teclado. O atalho **Deck Runner** na área de trabalho reabre a janela. Para jogar, use o modo Big Picture no Steam ou o atalho do SteamOS para o modo de jogo.
 
+No Deck ou no painel do Mac, selecione o nome de uma tarefa na tela de acompanhamento para ler o log. A saída acompanha as novas linhas enquanto você estiver no fim. Ao rolar para cima, o painel mantém sua posição. **Ir ao fim** volta a acompanhar a execução. Quando o teste termina, o painel faz a última leitura e mostra o resultado. **Voltar** devolve o foco à tarefa.
+
 ## Retomar a transmissão no Mac
 
 Emparelhe o Steam Link, escolha o Desktop como destino da transmissão e deixe a janela aberta. O componente opcional **Deck Link** observa a inicialização do Deck pelo túnel local. Depois de um reinício, ele procura o nome do computador emparelhado e o botão de iniciar na janela do Steam Link. O Steam Link pode recriar a janela de vídeo durante a conexão. O Deck Link reaplica a posição e o tamanho da transmissão anterior. Fechar o aplicativo Steam Link encerra o monitoramento daquela sessão. A fila funciona enquanto a transmissão está fechada.
@@ -37,7 +39,7 @@ python3 mac/install-link.py
 
 Se o computador aparecer com outro nome na tela de emparelhamento, acrescente `--host-name "Nome no Steam Link"`. O macOS pede acesso de **Acessibilidade** para `~/Applications/Deck Link.app`. A autorização permite selecionar o botão do Steam Link. O auxiliar usa a árvore de acessibilidade do aplicativo e dispensa a gravação da tela. Uma atualização do executável compilado localmente pode exigir adicionar a nova cópia em **Privacidade e Segurança → Acessibilidade**. Repetir a instalação da mesma versão preserva a cópia autorizada.
 
-Para consultar a retomada, leia `~/Library/Logs/deck-runner/steam-link.log`. Para desativá-la, descarregue o serviço e remova seu arquivo de inicialização:
+Para saber se o Steam Link está fechado, aberto ou transmitindo, execute `deck-runner video-status` no Mac. O diagnóstico também mostra o serviço de retomada, a autorização de Acessibilidade e a conexão com o Deck. Para consultar o histórico da retomada, leia `~/Library/Logs/deck-runner/steam-link.log`. Para desativá-la, descarregue o serviço e remova seu arquivo de inicialização:
 
 ```sh
 launchctl bootout "gui/$(id -u)/io.github.deck-runner.steam-link"

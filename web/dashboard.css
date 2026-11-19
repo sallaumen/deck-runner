@@ -647,16 +647,36 @@ footer {
 #station-dialog::backdrop {
   background: rgb(5 12 14 / 78%);
 }
+#dialog-context,
 #dialog-message {
   margin-block: 12px;
   color: var(--muted);
 }
 #dialog-log {
+  color: var(--text);
+  padding: 12px;
+  background: var(--bg);
+  border-radius: 6px;
+  margin-block: 14px;
   max-height: 48vh;
   overflow: auto;
   white-space: pre-wrap;
   overflow-wrap: anywhere;
   font: 14px/1.5 var(--mono);
+}
+.job-title {
+  color: inherit;
+  text-decoration-color: var(--muted);
+}
+#dialog-title {
+  overflow-wrap: anywhere;
+}
+#dialog-context {
+  font-size: 14px;
+  overflow-wrap: anywhere;
+}
+#dialog-message:empty {
+  display: none;
 }
 .dialog-actions {
   display: flex;

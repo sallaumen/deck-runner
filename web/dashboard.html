@@ -111,9 +111,16 @@
     </footer>
     <dialog id="station-dialog" aria-labelledby="dialog-title">
       <h2 id="dialog-title"></h2>
-      <pre id="dialog-log" tabindex="0" hidden></pre>
-      <p id="dialog-message"></p>
+      <p id="dialog-context" hidden></p>
+      <pre
+        id="dialog-log"
+        aria-label="Saída da tarefa"
+        tabindex="0"
+        hidden
+      ></pre>
+      <p id="dialog-message" role="status"></p>
       <div class="dialog-actions">
+        <button id="log-end" hidden>Ir ao fim</button>
         <button id="dialog-back">Voltar</button>
         <button id="confirm-leave" hidden>Fechar painel</button>
       </div>

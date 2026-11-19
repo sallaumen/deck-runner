@@ -10,6 +10,8 @@ import sys
 import tempfile
 import time
 
+from link_status import probe
+
 NAME = "io.github.deck-runner.steam-link"
 SOURCE = Path(__file__).with_name("DeckLink.swift")
 HOME = Path.home()
@@ -40,25 +42,19 @@ def build(app):
 
 def wait_for_access():
     """Start the resident process only after a fresh app instance confirms access."""
-    with tempfile.TemporaryDirectory() as tmp:
-        output = Path(tmp) / "status"
-        deadline = time.monotonic() + 180
-        prompted = False
-        while True:
-            output.write_text("")
-            subprocess.run(
-                ["open", "-n", "-W", "-g", "--stdout", output, "-a", APP, "--args", "--status"],
-                check=True, timeout=15,
-            )
-            if "accessibility=true" in output.read_text():
-                return
-            if not prompted:
-                print("Ative Deck Link em Privacidade e Segurança → Acessibilidade.", flush=True)
-                subprocess.run(["open", "-n", "-g", "-a", APP, "--args", "--authorize"], check=True)
-                prompted = True
-            if time.monotonic() >= deadline:
-                raise TimeoutError("Autorize o Deck Link e repita a instalação.")
-            time.sleep(3)
+    deadline = time.monotonic() + 180
+    prompted = False
+    while True:
+        access, _, _ = probe(APP)
+        if access:
+            return
+        if not prompted:
+            print("Ative Deck Link em Privacidade e Segurança → Acessibilidade.", flush=True)
+            subprocess.run(["open", "-n", "-g", "-a", APP, "--args", "--authorize"], check=True)
+            prompted = True
+        if time.monotonic() >= deadline:
+            raise TimeoutError("Autorize o Deck Link e repita a instalação.")
+        time.sleep(3)
 
 
 def install(host_name):

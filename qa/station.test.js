@@ -59,7 +59,12 @@ test(
       [width, viewport] = await dimensions();
       assert.equal(width, viewport);
       await page.getByRole("link", { name: "Log", exact: true }).click();
-      assert.ok((await page.locator("body").innerText()).includes("fictício"));
+      await page
+        .locator("dialog")
+        .getByText(/resultado é fictício/)
+        .waitFor();
+      assert.equal(new URL(page.url()).pathname, "/");
+      await page.getByRole("button", { name: "Voltar", exact: true }).click();
       await page.goto(url.href);
       await page.locator("#usage").getByText("2 / 5").waitFor();
       let mode = "offline";
@@ -163,6 +168,76 @@ test(
       await page.setViewportSize({ width: 375, height: 812 });
       [width, viewport] = await dimensions();
       assert.equal(width, viewport);
+      await page.unroute("**/api/status");
+      await page.goto(url.href + "&station=1");
+      await page.setViewportSize({ width: 1280, height: 800 });
+      const job = sample.jobs.find((j) => j.state === "running");
+      const logPath = "/logs/" + job.id;
+      let outputText = Array.from({ length: 150 }, (_, i) => "Linha " + i).join(
+        "\n",
+      );
+      let readCount = 0,
+        unavailable = false;
+      await page.route("**" + logPath, (route) => {
+        readCount++;
+        return unavailable
+          ? route.abort()
+          : route.fulfill({ body: outputText, contentType: "text/plain" });
+      });
+      await page
+        .locator("#running")
+        .getByRole("link", { name: job.meta.label, exact: true })
+        .click();
+      const body = page.locator("#dialog-log");
+      await body.getByText("Linha 149", { exact: false }).waitFor();
+      assert.ok(await body.evaluate((e) => e.scrollTop > 0));
+      await body.evaluate((e) => {
+        e.focus();
+        e.scrollTop = 80;
+      });
+      await page.getByRole("button", { name: "Ir ao fim" }).waitFor();
+      const held = await body.textContent();
+      const refresh = () => page.evaluate(() => refresh());
+      unavailable = true;
+      await refresh();
+      await page.getByText(/Leitura interrompida/).waitFor();
+      assert.equal(await body.textContent(), held);
+      unavailable = false;
+      outputText =
+        "Somente as linhas recentes estão neste lote.\nFim do teste.";
+      await page.route("**/api/status", (route) =>
+        route.fulfill({
+          json: {
+            ...sample,
+            jobs: sample.jobs.map((j) =>
+              j.id === job.id
+                ? { ...j, state: "passed", finished: Date.now() / 1000 }
+                : j,
+            ),
+          },
+        }),
+      );
+      await refresh();
+      await page
+        .locator("#dialog-context")
+        .getByText(/Passou/)
+        .waitFor();
+      await page.waitForFunction(
+        () => !document.getElementById("dialog-message").textContent,
+      );
+      assert.equal(await body.textContent(), held);
+      assert.equal(await body.evaluate((e) => e.scrollTop), 80);
+      await page.getByRole("button", { name: "Ir ao fim" }).click();
+      await body.getByText(/Fim do teste/).waitFor();
+      const readsAtFinish = readCount;
+      await refresh();
+      assert.equal(readCount, readsAtFinish);
+      await page.keyboard.press("Escape");
+      await page.waitForFunction(
+        (href) => document.activeElement.getAttribute("href") === href,
+        logPath,
+      );
+      assert.equal(await page.locator("dialog").isVisible(), false);
       assert.deepEqual(errors, []);
     } finally {
       try {

@@ -1,16 +1,142 @@
-// Only the dedicated Plasma window gets controls for the physical display.
-if (new URLSearchParams(location.search).get("station") === "1") {
+(() => {
+  const dialog = byId("station-dialog");
+  const back = byId("dialog-back"),
+    confirm = byId("confirm-leave");
+  const note = byId("dialog-message"),
+    log = byId("dialog-log");
+  const context = byId("dialog-context"),
+    end = byId("log-end");
+  const station = new URLSearchParams(location.search).get("station") === "1";
+  let reading = null;
+
+  function atEnd() {
+    return log.scrollHeight - log.scrollTop - log.clientHeight <= 3;
+  }
+  function followOutput() {
+    if (!reading || reading.output === undefined) return;
+    if (log.hidden || log.textContent !== reading.output) {
+      log.textContent = reading.output;
+      log.hidden = false;
+      log.scrollTop = log.scrollHeight;
+    }
+  }
+  function updateEndButton() {
+    if (atEnd()) followOutput();
+    const hide = !dialog.open || log.hidden || atEnd();
+    if (hide && document.activeElement === end)
+      log.focus({ preventScroll: true });
+    end.hidden = hide;
+  }
+  log.addEventListener("scroll", updateEndButton);
+  end.onclick = () => {
+    log.scrollTop = log.scrollHeight;
+    log.focus({ preventScroll: true });
+    updateEndButton();
+  };
+  back.onclick = () => dialog.close();
+
+  async function readOutput() {
+    const view = reading;
+    if (
+      document.hidden ||
+      !dialog.open ||
+      !view ||
+      view.loading ||
+      view.complete
+    )
+      return;
+    view.loading = true;
+    const job = data?.jobs.find((j) => j.id === view.id);
+    const live = job?.state === "running" || job?.state === "queued";
+    const state =
+      { running: "Em execução", queued: "Na fila" }[job?.state] ||
+      labels[job?.state] ||
+      job?.state;
+    byId("dialog-title").textContent =
+      job?.meta.label || (view.isLog ? "Log da tarefa" : "Detalhes da tarefa");
+    context.textContent = [
+      view.isLog ? "Log" : "Detalhes",
+      job?.meta.project,
+      job?.meta.owner,
+      state,
+    ]
+      .filter(Boolean)
+      .join(" · ");
+    context.hidden = false;
+    try {
+      const res = await fetch(view.href, {
+        cache: "no-store",
+        signal: AbortSignal.any([
+          view.cancel.signal,
+          AbortSignal.timeout(8000),
+        ]),
+      });
+      if (!res.ok) throw Error();
+      const content = await res.text();
+      if (!dialog.open || reading !== view) return;
+      view.output = content;
+      if (log.hidden || atEnd()) followOutput();
+      updateEndButton();
+      note.textContent = "";
+      view.complete = !view.isLog || !live;
+    } catch {
+      if (dialog.open && reading === view)
+        note.textContent = "Leitura interrompida. Tentando novamente…";
+    } finally {
+      view.loading = false;
+    }
+  }
+  document.addEventListener("station-refresh", readOutput);
+  document.addEventListener("visibilitychange", readOutput);
+  dialog.addEventListener("close", () => {
+    if (dialog.open || !reading) return;
+    const view = reading;
+    reading = null;
+    view.cancel.abort();
+    const links = [...document.querySelectorAll("a[href]")];
+    const target =
+      links.find((el) => el.href === view.href && el.getClientRects().length) ||
+      byId("switch");
+    target.focus();
+  });
+  document.addEventListener("click", (event) => {
+    const item = event.target.closest('a[href^="/logs/"], a[href^="/result/"]');
+    if (
+      !item ||
+      event.defaultPrevented ||
+      event.button !== 0 ||
+      event.metaKey ||
+      event.ctrlKey ||
+      event.shiftKey ||
+      event.altKey
+    )
+      return;
+    const isLog = item.pathname.startsWith("/logs/");
+    if (!isLog && !station) return;
+    event.preventDefault();
+    reading?.cancel.abort();
+    reading = {
+      id: item.pathname.split("/").pop(),
+      href: item.href,
+      isLog,
+      cancel: new AbortController(),
+    };
+    log.textContent = "";
+    log.hidden = confirm.hidden = end.hidden = true;
+    note.textContent = "Carregando…";
+    dialog.showModal();
+    back.focus();
+    readOutput();
+  });
+
+  // Only the dedicated Plasma window gets controls for the physical display.
+  if (!station) return;
   document.body.classList.add("station");
   const link = byId("switch");
   const next = new URL(link.href);
   next.searchParams.set("station", "1");
   link.href = next;
-  const leave = byId("leave"),
-    dialog = byId("station-dialog");
-  const back = byId("dialog-back"),
-    confirm = byId("confirm-leave");
-  const note = byId("dialog-message"),
-    log = byId("dialog-log");
+  const leave = byId("leave");
   leave.hidden = false;
   byId("pad-help").hidden = false;
   for (const [index, section] of [
@@ -23,15 +149,16 @@ if (new URLSearchParams(location.search).get("station") === "1") {
     section.setAttribute("aria-labelledby", heading.id);
   }
   function askLeave() {
+    reading?.cancel.abort();
+    reading = null;
     byId("dialog-title").textContent = "Voltar à área de trabalho?";
     note.textContent = "Os testes continuam rodando no Deck.";
-    log.hidden = true;
+    context.hidden = log.hidden = end.hidden = true;
     confirm.hidden = false;
     dialog.showModal();
     confirm.focus();
   }
   leave.onclick = askLeave;
-  back.onclick = () => dialog.close();
   confirm.onclick = async () => {
     confirm.disabled = true;
     try {
@@ -49,37 +176,6 @@ if (new URLSearchParams(location.search).get("station") === "1") {
       confirm.disabled = false;
     }
   };
-  let logRequest;
-  dialog.addEventListener("close", () => {
-    logRequest?.abort();
-  });
-  document.addEventListener("click", async (event) => {
-    const item = event.target.closest('a[href^="/logs/"], a[href^="/result/"]');
-    if (!item || event.metaKey || event.ctrlKey) return;
-    event.preventDefault();
-    byId("dialog-title").textContent = item.pathname.startsWith("/logs/")
-      ? "Log da tarefa"
-      : "Detalhes da tarefa";
-    note.textContent = "Carregando…";
-    log.textContent = "";
-    log.hidden = confirm.hidden = true;
-    dialog.showModal();
-    back.focus();
-    const request = (logRequest = new AbortController());
-    try {
-      const res = await fetch(item.href, { signal: request.signal });
-      if (!res.ok) throw Error();
-      const content = await res.text();
-      if (request.signal.aborted) return;
-      log.textContent = content;
-      log.hidden = false;
-      note.textContent = "";
-    } catch {
-      if (!request.signal.aborted)
-        note.textContent = "Não foi possível carregar a tarefa.";
-    }
-  });
-
   function move(key) {
     const vertical = key === "ArrowUp" || key === "ArrowDown";
     const sign = key === "ArrowUp" || key === "ArrowLeft" ? -1 : 1;
@@ -205,4 +301,4 @@ if (new URLSearchParams(location.search).get("station") === "1") {
   window.addEventListener("gamepadconnected", start);
   document.addEventListener("visibilitychange", start);
   start();
-}
+})();
