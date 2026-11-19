@@ -3,6 +3,8 @@
 
 from collections import Counter
 import activity
+import live
+import storage
 import argparse
 import contextlib
 import fcntl
@@ -13,6 +15,7 @@ import os
 from pathlib import Path
 import re
 import secrets
+import signal
 import shutil
 import sqlite3
 import subprocess
@@ -40,7 +43,7 @@ REPO_LOCK = threading.Lock()
 ROOT = Path(
     os.environ.get("DECK_RUNNER_HOME", str(Path.home() / ".local/share/deck-runner"))
 )
-GIB = 1024**3
+GIB = storage.GIB
 IMAGE = "localhost/deck-runner:mix"
 TERMINAL = (
     "passed",
@@ -117,6 +120,7 @@ def db():
     c.execute("""CREATE INDEX IF NOT EXISTS jobs_project_result
                  ON jobs(json_extract(meta,'$.project'), finished DESC, id DESC)
                  WHERE finished IS NOT NULL""")
+    c.execute("CREATE INDEX IF NOT EXISTS jobs_unfinished ON jobs(id) WHERE finished IS NULL")
     c.execute("CREATE INDEX IF NOT EXISTS jobs_created ON jobs(created)")
     c.execute("CREATE INDEX IF NOT EXISTS jobs_finished ON jobs(finished) WHERE finished IS NOT NULL")
     c.execute("CREATE INDEX IF NOT EXISTS jobs_running_start ON jobs(started) WHERE state='running'")
@@ -225,8 +229,8 @@ def available_memory():
 def gate():
     if setting("paused") == "1":
         return "Pausado: tarefas novas aguardam na fila."
-    if shutil.disk_usage(ROOT).free < 15 * GIB:
-        return "Aguardando espaço: é preciso manter 15 GiB livres."
+    if shutil.disk_usage(ROOT).free < storage.ADMIT_AT:
+        return "Espaço baixo. Novos testes exigem 15 GiB livres, com 10 GiB reservados para o Deck."
     if available_memory() < (DEFAULT_MIB + DESKTOP_MIB) * MIB:
         return "Aguardando memória livre no Deck."
     return ""
@@ -303,6 +307,8 @@ def status():
         alive=time.time() - float(setting("heartbeat") or 0) < 15,
         available_memory=available_memory(),
         disk_free=shutil.disk_usage(ROOT).free,
+        disk_reserve=storage.RESERVE,
+        disk_admit=storage.ADMIT_AT,
         slots=slots,
         project_slots=project_slots,
         max_slots=MAX_SLOTS,
@@ -345,8 +351,8 @@ def file_digest(path):
 def ingest(stream):
     if time.time() - float(setting("heartbeat") or 0) > 20:
         raise ValueError("Executor offline; no task submitted")
-    if shutil.disk_usage(ROOT).free < 15 * GIB:
-        raise ValueError("Less than 15 GiB free; no task submitted")
+    if shutil.disk_usage(ROOT).free < storage.ADMIT_AT:
+        raise ValueError("Envio recusado. São necessários 15 GiB livres para preservar 10 GiB no Deck.")
     job = uuid.uuid4().hex[:12]
     folder = ROOT / "jobs" / job
     folder.mkdir(parents=True)
@@ -358,8 +364,8 @@ def ingest(stream):
                 count += len(chunk)
                 if count > 1024 * MIB:
                     raise ValueError("Snapshot exceeds 1 GiB")
-                if count % (32 * MIB) == 0 and shutil.disk_usage(ROOT).free < 12 * GIB:
-                    raise ValueError("Low disk space during upload")
+                if shutil.disk_usage(ROOT).free - len(chunk) <= storage.STOP_AT:
+                    raise ValueError("Envio interrompido para preservar a reserva do Deck.")
                 out.write(chunk)
         with tarfile.open(package, mode="r:") as tar:
             members = tar.getmembers()
@@ -373,12 +379,18 @@ def ingest(stream):
             meta = json.load(tar.extractfile("meta.json"))
             validate_meta(meta)
             with (folder / "snapshot.bundle").open("wb") as f:
-                shutil.copyfileobj(tar.extractfile("snapshot.bundle"), f)
+                source = tar.extractfile("snapshot.bundle")
+                while chunk := source.read(MIB):
+                    if shutil.disk_usage(ROOT).free - len(chunk) <= storage.STOP_AT:
+                        raise ValueError("Espaço insuficiente para armazenar o teste.")
+                    f.write(chunk)
         package.unlink()
         meta["bundle_sha256"] = file_digest(folder / "snapshot.bundle")
         with contextlib.closing(db()) as c, c:
             c.execute("BEGIN IMMEDIATE")
             validate_meta(meta)
+            if shutil.disk_usage(ROOT).free < storage.ADMIT_AT:
+                raise ValueError("Disco abaixo de 15 GiB livres. Teste não enviado.")
             c.execute(
                 "INSERT INTO jobs (id,meta,state,created) VALUES (?,?,?,?)",
                 (job, json.dumps(meta), "queued", time.time()),
@@ -405,7 +417,7 @@ def claim():
             for r in c.execute("SELECT meta,memory FROM jobs WHERE state='running'")
         ]
         slots, project_slots = slot_limits(c)
-        if len(active) >= slots or shutil.disk_usage(ROOT).free < 15 * GIB:
+        if len(active) >= slots or shutil.disk_usage(ROOT).free < storage.ADMIT_AT:
             return None
         counts = Counter(m["project"] for m, _ in active)
         capacity = capacity_bytes(active, pool_budget(slots))
@@ -480,6 +492,43 @@ def sample_memory(job):
         return 0, 0
 
 
+class DiskReserveError(Exception):
+    pass
+
+
+def prepare_command(argv, log, timeout):
+    # Git can write a large checkout before the test container starts.
+    deadline = time.monotonic() + timeout
+
+    def check_space():
+        if shutil.disk_usage(ROOT).free <= storage.STOP_AT:
+            raise DiskReserveError(
+                "Preparação interrompida para preservar 10 GiB no Deck."
+            )
+
+    check_space()
+    with subprocess.Popen(
+        argv, stdout=log, stderr=subprocess.STDOUT, start_new_session=True
+    ) as child:
+        try:
+            while True:
+                remaining = deadline - time.monotonic()
+                if remaining <= 0:
+                    raise subprocess.TimeoutExpired(argv, timeout)
+                try:
+                    code = child.wait(timeout=min(0.5, remaining))
+                except subprocess.TimeoutExpired:
+                    check_space()
+                    continue
+                if code:
+                    raise subprocess.CalledProcessError(code, argv)
+                return
+        finally:
+            if child.poll() is None:
+                with contextlib.suppress(ProcessLookupError):
+                    os.killpg(child.pid, signal.SIGKILL)
+
+
 def execute(job):
     row = jobrow(job)
     meta = json.loads(row["meta"])
@@ -494,13 +543,8 @@ def execute(job):
         with (folder / "output.log").open("wb", buffering=0) as log:
 
             def command(argv):
-                remaining = meta["timeout"] - (time.monotonic() - started)
-                return run(
-                    argv,
-                    stdout=log,
-                    stderr=subprocess.STDOUT,
-                    timeout=max(0.1, min(120, remaining)),
-                )
+                remaining = min(120, meta["timeout"] - (time.monotonic() - started))
+                return prepare_command(argv, log, remaining)
 
             repo.parent.mkdir(exist_ok=True)
             work.parent.mkdir(exist_ok=True)
@@ -640,6 +684,8 @@ def execute(job):
                     image_id,
                     *meta["command"][1:],
                 ]
+            if shutil.disk_usage(ROOT).free <= storage.STOP_AT:
+                raise DiskReserveError("Teste interrompido para preservar 10 GiB no Deck.")
             process = subprocess.Popen(argv, stdout=log, stderr=subprocess.STDOUT)
             next_sample = 0
             while process.poll() is None:
@@ -655,14 +701,11 @@ def execute(job):
                     outcome, error = "output_limit", "Log exceeded 50 MiB"
                     stop_container(job)
                     break
+                if shutil.disk_usage(ROOT).free <= storage.STOP_AT:
+                    outcome, error = "disk_limit", "Teste interrompido para preservar 10 GiB no Deck."
+                    stop_container(job)
+                    break
                 if time.monotonic() > next_sample:
-                    if shutil.disk_usage(ROOT).free < 10 * GIB:
-                        outcome, error = (
-                            "disk_limit",
-                            "Stopped to preserve 10 GiB of free disk space",
-                        )
-                        stop_container(job)
-                        break
                     current, peak = sample_memory(job)
                     update(job, memory=current, peak=max(peak, jobrow(job)["peak"]))
                     next_sample = time.monotonic() + 5
@@ -677,7 +720,9 @@ def execute(job):
                     )
             log.write(f"\nExecutor result: {outcome}; exit code: {code}\n".encode())
     except Exception as exc:
-        if isinstance(exc, subprocess.TimeoutExpired):
+        if isinstance(exc, DiskReserveError):
+            outcome = "disk_limit"
+        elif isinstance(exc, subprocess.TimeoutExpired):
             outcome = "timeout"
         error = str(exc)
         with (folder / "output.log").open("a") as log:
@@ -712,11 +757,7 @@ def cleanup():
         age = time.time() - row["finished"]
         work = ROOT / "worktrees" / row["id"]
         if age > 86400 and work.exists():
-            subprocess.run(
-                ["git", "-C", str(repo), "worktree", "remove", "--force", str(work)],
-                stdout=subprocess.DEVNULL,
-                stderr=subprocess.DEVNULL,
-            )
+            storage.remove_checkout(ROOT, row["id"], json.loads(row["meta"])["project"])
         if age > 7 * 86400:
             shutil.rmtree(ROOT / "jobs" / row["id"], ignore_errors=True)
             subprocess.run(
@@ -788,6 +829,7 @@ class Handler(http.server.BaseHTTPRequestHandler):
                 "/assets/controller.js",
                 "/assets/activity.js",
                 "/assets/limits.js",
+                "/assets/storage.js",
                 "/assets/icon.svg",
             ):
                 asset = assets / path.split("/")[-1]
@@ -803,6 +845,10 @@ class Handler(http.server.BaseHTTPRequestHandler):
                 if len(values) != 1 or values[0] not in tuple(map(str, activity.PERIODS)):
                     return self.send("Unsupported period", code=400)
                 return self.send(json.dumps(self.activity(int(values[0]))), "application/json")
+            if path == "/api/events":
+                return self.server.changes.stream(self)
+            if path == "/api/storage":
+                return self.send(json.dumps(self.server.inventory.view()), "application/json")
             if path == "/api/boot":
                 return self.send(Path("/proc/sys/kernel/random/boot_id").read_text().strip(), "text/plain")
             if path == "/api/status":
@@ -840,6 +886,9 @@ class Handler(http.server.BaseHTTPRequestHandler):
         form = urllib.parse.parse_qs(self.rfile.read(size).decode())
         if not secrets.compare_digest(form.get("token", [""])[0], TOKEN):
             return self.send("Invalid token; reload the page", code=403)
+        if self.path == "/storage/clean":
+            started = self.server.inventory.clean(form.get("plan", [""])[0])
+            return self.send(json.dumps({"started": started}), "application/json", code=202 if started else 409)
         if self.path == "/limits":
             try:
                 changed, (slots, project_slots) = change_limits(form)
@@ -913,6 +962,9 @@ def serve():
                 threading.Thread(target=redirect.serve_forever, daemon=True).start()
             except OSError as err:
                 print(f"Old bookmarks unavailable: {err}", file=sys.stderr)
+        httpd.inventory = storage.Inventory(ROOT, db)
+        httpd.changes = live.Changes()
+        threading.Thread(target=httpd.changes.observe, args=(db,), daemon=True).start()
         threading.Thread(target=heartbeat, daemon=True).start()
         threading.Thread(target=worker, daemon=True).start()
         httpd.serve_forever()

@@ -295,6 +295,8 @@ function render() {
     return (
       '<div class="task-row ' +
       (running ? "job" : "queued") +
+      '" data-job="' +
+      esc(j.id) +
       '"><div class="task-main"><strong title="' +
       name +
       '">' +
@@ -361,7 +363,9 @@ function render() {
       sideRows
         .map(
           (j) =>
-            '<div class="history-row"><b class="' +
+            '<div class="history-row" data-job="' +
+            esc(j.id) +
+            '"><b class="' +
             esc(j.state) +
             '">' +
             esc(labels[j.state] || j.state) +
@@ -412,10 +416,14 @@ async function refresh() {
       signal: AbortSignal.timeout(8000),
     });
     if (!r.ok) throw Error();
-    data = await r.json();
+    const previous = offline || resync ? null : data;
+    const incoming = await r.json();
+    data = incoming;
     lastRead = Date.now() / 1000;
     offline = false;
     render();
+    signalChanges(previous?.instance === data.instance ? previous : null);
+    resync = document.hidden;
     byId("connection").textContent = data.alive
       ? "Conectado"
       : "Executor sem resposta";
@@ -427,6 +435,10 @@ async function refresh() {
   } finally {
     pending = false;
     document.dispatchEvent(new Event("station-refresh"));
+    if (retryRefresh && !document.hidden) {
+      retryRefresh = false;
+      queueMicrotask(refresh);
+    }
   }
 }
 async function action(path) {
@@ -467,5 +479,110 @@ const observer = new ResizeObserver(() => {
   });
 });
 for (const id of ["work-space", "archive-space"]) observer.observe(byId(id));
-refresh();
-setInterval(refresh, 4000);
+let events,
+  resync = true,
+  retryRefresh = false;
+function signalChanges(previous) {
+  const known = new Map(previous?.jobs.map((j) => [j.id, j.state]));
+  const changed = previous
+    ? data.jobs.filter(
+        (j) =>
+          known.get(j.id) !== j.state &&
+          (known.has(j.id) ||
+            j.state === "running" ||
+            j.state === "queued" ||
+            (j.finished || j.created) >= lastRead - 30),
+      )
+    : data.jobs;
+  if (!changed.length) {
+    if (!previous) byId("live-note").textContent = "";
+    return;
+  }
+  const latest = changed.reduce((a, b) =>
+    (b.finished || b.started || b.created) >
+    (a.finished || a.started || a.created)
+      ? b
+      : a,
+  );
+  const state =
+    { queued: "Entrou na fila", running: "Começou" }[latest.state] ||
+    labels[latest.state] ||
+    latest.state;
+  const note = byId("live-note");
+  note.textContent =
+    state +
+    " · " +
+    latest.meta.project +
+    " · " +
+    clock(latest.finished || latest.started || latest.created) +
+    (previous && changed.length > 1 ? "  +" + (changed.length - 1) : "");
+  note.title = latest.meta.label;
+  note.dataset.state = latest.state;
+  if (!previous) return;
+  if (!matchMedia("(prefers-reduced-motion: reduce)").matches) {
+    const accent = ["failed", "disk_limit", "timeout", "output_limit"].includes(
+      latest.state,
+    )
+      ? "#ffac9b"
+      : latest.state === "queued"
+        ? "#ffc278"
+        : "#aaf5d2";
+    note.animate(
+      [
+        { color: accent, opacity: 0.55 },
+        { color: accent, opacity: 1, offset: 0.3 },
+        { color: "var(--muted)", opacity: 1 },
+      ],
+      { duration: 1100 },
+    );
+    const ids = new Set(changed.map((j) => j.id));
+    for (const row of document.querySelectorAll("[data-job]")) {
+      if (ids.has(row.dataset.job) && row.getClientRects().length)
+        row.animate(
+          [
+            { backgroundColor: "rgb(170 245 210 / 16%)" },
+            { backgroundColor: "transparent" },
+          ],
+          { duration: 900 },
+        );
+    }
+  }
+  document.dispatchEvent(new Event("station-change"));
+}
+function fromStream() {
+  if (pending) retryRefresh = true;
+  else refresh();
+}
+function connect() {
+  if (document.hidden) {
+    events?.close();
+    events = null;
+    resync = true;
+    return;
+  }
+  if (!events && window.EventSource) {
+    events = new EventSource("/api/events");
+    events.addEventListener("queue", fromStream);
+  }
+  fromStream();
+}
+document.addEventListener("visibilitychange", connect);
+window.addEventListener("pagehide", () => {
+  events?.close();
+  events = null;
+});
+window.addEventListener("pageshow", (event) => {
+  if (event.persisted) connect();
+});
+connect();
+// Metrics and log tails can change without a queue transition. Polling also covers older hosts.
+setInterval(() => {
+  if (
+    !document.hidden &&
+    (offline ||
+      !lastRead ||
+      events?.readyState !== 1 ||
+      Date.now() / 1000 - lastRead >= 4)
+  )
+    fromStream();
+}, 4000);

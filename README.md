@@ -27,6 +27,8 @@ O executor usa Python, SQLite e Podman no Deck. A interface é HTML, CSS e JavaS
 3. No clone do projeto no **Mac**, rode `python3 scripts/install-mac.py deck@steamdeck.local`. O instalador verifica a identidade da estação nas duas pontas e coloca **Testes no Deck** e **Adicionar projeto ao Deck** na Mesa.
 4. Abra [o painel no Mac](http://127.0.0.1:4040/) ou [a tela de acompanhamento](http://127.0.0.1:4040/?screen=1). Ao entrar no Desktop do Deck, a tela de acompanhamento abre automaticamente.
 
+Use **Testes no disco** para consultar o espaço por projeto e liberar cópias de testes encerrados. A bancada reserva 10 GiB para o Deck e exige 15 GiB livres para admitir novos testes.
+
 ## Envie um teste
 
 Cadastre uma vez a pasta principal do repositório em `~/projects`. Seus worktrees passam a compartilhar a fila e as vagas do projeto. O exemplo usa um projeto Elixir com PostgreSQL na porta 5432.

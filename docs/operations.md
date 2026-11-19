@@ -62,6 +62,12 @@ Na tela principal do Deck ou do Mac, selecione **Ajustar vagas** ao lado de **Oc
 
 A mudança vale para a próxima admissão e fica salva após suspensão, reinício e atualização. Ao reduzir o total abaixo da ocupação atual, as tarefas em andamento terminam normalmente. A fila volta a preencher vagas quando a ocupação fica abaixo do novo limite. O total e o limite por projeto são compartilhados por todos os agentes e worktrees. O comando `deck-runner status` mostra os valores atuais.
 
+## Armazenamento dos testes
+
+Em **Testes no disco**, ao lado do disco livre, confira os blocos ocupados pelas cópias de trabalho, caches de compilação, repositórios Git e arquivos das tarefas. A tabela separa os valores por projeto. Uma medição em segundo plano é compartilhada pelos painéis e reutilizada por até três minutos. O horário indica quando ela terminou. Imagens do Podman, bancos externos e jogos ficam fora desses totais.
+
+**Limpar cópias** mostra quantos testes encerrados entram na limpeza. **Confirmar limpeza** remove somente as cópias daquela medição que o Git reconhece e que continuam encerradas. O cache, os repositórios, os logs e o histórico permanecem disponíveis. A janela pode ser fechada durante a operação. Ao terminar, o painel mede de novo. Sem uma limpeza manual, continua valendo a retenção normal das cópias por um dia.
+
 ## Limites e retenção
 
 | Recurso | Limite |
@@ -69,7 +75,7 @@ A mudança vale para a próxima admissão e fica salva após suspensão, reiníc
 | Concorrência | De 1 a 32 no total. O limite por projeto pode ir até o total. Padrão inicial de 5 e 3. |
 | RAM | 1,25 / 2,5 / 5 GiB por tarefa. A reserva conjunta parte de 7,5 GiB e cresce com as vagas, limitada a 512 MiB abaixo do teto dos containers. O grupo pode usar até 80% da RAM física. A fila também desconta as reservas pendentes e preserva 1,5 GiB disponíveis para o sistema. |
 | CPU | Até 3 CPUs lógicas por tarefa e 5 para o conjunto |
-| Disco | Admissão a partir de 15 GiB livres. Durante a execução, proteção abaixo de 10 GiB |
+| Disco | Reserva de 10 GiB. Abaixo de 15 GiB, novos envios são recusados e a fila aguarda espaço. A 12 GiB, envios e execuções em andamento são interrompidos para dar margem ao sistema |
 | Retenção | Worktrees por 24 horas, logs e referências das tarefas por 7 dias. O histórico de resultados continua em SQLite |
 
 A admissão considera o saldo de memória reservado às tarefas ativas. A próxima tarefa de um projeto pode aguardar enquanto outro projeto com trabalho menor avança. Cada execução Mix usa um cache separado por projeto, imagem, lockfile e vaga. Uma tarefa aceita segue no Deck se o túnel fechar. Uma execução interrompida por reinício recebe o estado *interrompido*.

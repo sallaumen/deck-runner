@@ -179,6 +179,9 @@
     );
   }
   async function refresh() {
+    if (document.hidden) return;
+    clearTimeout(chartUpdate);
+    chartUpdate = null;
     clearTimeout(timer);
     pending?.abort();
     const request = (pending = new AbortController());
@@ -223,9 +226,26 @@
     status.hidden = false;
     refresh();
   };
+  let chartUpdate;
+  document.addEventListener("station-change", () => {
+    if (!chartUpdate && !document.hidden)
+      chartUpdate = setTimeout(() => {
+        chartUpdate = null;
+        refresh();
+      }, 1200);
+  });
   byId("filter").addEventListener("change", render);
+  function suspend() {
+    clearTimeout(timer);
+    clearTimeout(chartUpdate);
+    chartUpdate = null;
+    pending?.abort();
+    pending = null;
+  }
+  window.addEventListener("pagehide", suspend);
   document.addEventListener("visibilitychange", () => {
-    if (!document.hidden) refresh();
+    if (document.hidden) suspend();
+    else refresh();
   });
   refresh();
 })();
