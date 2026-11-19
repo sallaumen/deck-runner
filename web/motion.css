@@ -63,3 +63,5 @@
 #fx-sparks i:nth-child(-n+4) {left:12%;} #fx-sparks i:nth-child(n+5) {right:12%;}
 #fx-sparks .fx-star {width:19px;height:19px;background:#daffbc;clip-path:polygon(50% 0,60% 36%,100% 50%,63% 60%,50% 100%,40% 64%,0 50%,37% 40%);}
 #fx-sparks .fx-chip {width:6px;height:13px;}
+
+#fx-elapsed {flex:none;color:var(--ink);font-variant-numeric:tabular-nums;font-size:1.1em;}
