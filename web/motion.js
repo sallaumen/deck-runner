@@ -20,7 +20,15 @@
     dismiss(node);
     node.hidden = false;
     if (!reduced.matches) {
-      node.animate([{opacity:0,transform:"translateX(-36px) scale(.96)",easing:"cubic-bezier(.1,.75,.15,1)"},
+      const isResult = node.id==="fx-result";
+      const victory = isResult && node.dataset.state==="passed";
+      if (isResult) {
+        node.animate([
+          {opacity:0,transform:victory?"translateY(25px) scale(.77) rotate(-3deg)":"translateX(-18px) scale(.98)",easing:"cubic-bezier(.16,.8,.22,1)"},
+          {opacity:1,transform:victory?"translateY(-4px) scale(1.035) rotate(.7deg)":"translateX(3px)",offset:.09},
+          {opacity:1,transform:"none",offset:.17},{opacity:1,transform:"none",offset:.91,easing:"cubic-bezier(.55,0,.9,.35)"},
+          {opacity:0,transform:"translateY(-10px) scale(.97)"}],{duration:ms,fill:"both"});
+      } else node.animate([{opacity:0,transform:"translateX(-36px) scale(.96)",easing:"cubic-bezier(.1,.75,.15,1)"},
         {opacity:1,transform:"none",offset:.14},{opacity:1,transform:"none",offset:.88,easing:"cubic-bezier(.55,0,.9,.35)"},
         {opacity:0,transform:"translateX(12px)"}],{duration:ms,fill:"both"});
     }
@@ -232,7 +240,7 @@
     const result = mainResult(jobs);
     if (result && display) presentResults(jobs);
     const started = jobs.find(job=>job.state==="running");
-    if (started && display) showLaunch(started);
+    if (started && display && !(result && reduced.matches)) showLaunch(started);
     if (!reduced.matches && jobs.some(job => job.state === "queued")) {
       const tab = document.querySelector('[data-view="waiting"]');
       tab.getAnimations().filter(a=>a.id==="queue-arrival").forEach(a=>a.cancel());

@@ -124,3 +124,12 @@
 #fx-score {display:inline-block;font:900 italic clamp(32px,4.6vw,60px)/1 system-ui;letter-spacing:-.075em;transform-origin:50% 75%;text-shadow:2px 3px #102329;}
 #fx-combo small {font:600 10px/1.2 var(--mono);}
 @media(max-width:719px){#fx-combo {gap:1px;grid-template-columns:auto;text-align:center;} #fx-combo small{font-size:9px} }
+
+@media(prefers-reduced-motion:no-preference) {
+  #fx-result[data-state="passed"]:not([hidden]) .fx-emblem {animation:fx-stamp 450ms 110ms both;}
+}
+@keyframes fx-stamp {
+  0% {transform:rotate(-14deg) scale(.7);animation-timing-function:var(--fx-land);}
+  50% {transform:rotate(4deg) scale(1.11);}
+  100% {transform:none;}
+}
