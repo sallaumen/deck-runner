@@ -101,4 +101,5 @@
     }
   };
   document.addEventListener("station-refresh", update);
+  update();
 })();

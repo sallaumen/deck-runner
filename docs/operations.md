@@ -25,6 +25,8 @@ O arquivo `~/.config/deck-runner/host` no Mac guarda o destino. O cliente també
 
 Ao entrar na área de trabalho do Plasma, o atalho de inicialização abre **Deck Runner**. Use o analógico esquerdo ou o direcional para mover o foco. **A** seleciona. **B** volta de um log ou abre a confirmação para fechar o painel. O botão **Fechar painel** também funciona com o toque, o mouse e o teclado. O atalho **Deck Runner** na área de trabalho reabre a janela. Para jogar, use o modo Big Picture no Steam ou o atalho do SteamOS para o modo de jogo.
 
+Na tela do Deck, alterne **Em execução** e **Na fila** à esquerda ou **Resultados** e **Projetos** à direita. Quando a lista ocupa mais de uma página, as setas junto ao título mostram os itens seguintes. A paginação dos totais por projeto mantém as linhas de todos os projetos nos gráficos.
+
 No Deck ou no painel do Mac, selecione o nome de uma tarefa na tela de acompanhamento para ler o log. A saída acompanha as novas linhas enquanto você estiver no fim. Ao rolar para cima, o painel mantém sua posição. **Ir ao fim** volta a acompanhar a execução. Quando o teste termina, o painel faz a última leitura e mostra o resultado. **Voltar** devolve o foco à tarefa.
 
 ## Comparar o uso por projeto

@@ -126,6 +126,11 @@
       ${traces.join("")}${markers.join("")}${hits.join("")}</svg>
       <div class="activity-x" aria-hidden="true"><span>${hour(sample.start)}</span><span>${hour((sample.start + sample.end) / 2)}</span><span>${hour(sample.end)}</span></div>`;
   }
+  const shortDisplay = matchMedia(
+    "(min-width: 720px) and (max-height: 600px) and (min-aspect-ratio: 6/5)",
+  );
+  shortDisplay.addEventListener("change", render);
+  const legendPage = pager("legend-pages", render);
   function render() {
     if (!sample) return;
     const selected = byId("filter").value;
@@ -143,10 +148,10 @@
           a.name.localeCompare(b.name),
       );
     totals.innerHTML =
-      rows
+      legendPage(rows, shortDisplay.matches ? 2 : 4, "activity-totals")
         .map(
           (row) => `<tr>
-      <th scope="row"><svg viewBox="0 0 16 8" width="16" height="8" aria-hidden="true"><path d="M0 4H16" stroke="${color(row)}" stroke-width="2"/>${marker(row, 8, 4)}</svg>${esc(row.name)}</th>
+      <th scope="row" title="${esc(row.name)}"><svg viewBox="0 0 16 8" width="16" height="8" aria-hidden="true"><path d="M0 4H16" stroke="${color(row)}" stroke-width="2"/>${marker(row, 8, 4)}</svg>${esc(row.name)}</th>
       <td>${row.count}</td><td>${esc(elapsed(row.runtime))}</td></tr>`,
         )
         .join("") || '<tr><td colspan="3">Nenhum projeto cadastrado.</td></tr>';
@@ -180,6 +185,8 @@
       const result = await response.json();
       if (request !== pending) return;
       sample = result;
+      for (const row of result.projects)
+        projectColors.set(row.name, color(row));
       render();
       status.hidden = true;
     } catch {
@@ -199,6 +206,8 @@
   }
   period.onchange = () => {
     sample = null;
+    byId("legend-pages").hidden = true;
+    pages.delete("activity-totals");
     for (const id of ["activity-totals", "request-plot", "runtime-plot"])
       byId(id).replaceChildren();
     document

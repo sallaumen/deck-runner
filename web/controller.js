@@ -59,6 +59,7 @@
       job?.meta.project,
       job?.meta.owner,
       state,
+      job?.meta.command?.join(" "),
     ]
       .filter(Boolean)
       .join(" · ");
@@ -215,7 +216,7 @@
     if (best) {
       best.setAttribute("data-pad-focus", "");
       best.focus();
-    } else if (vertical && root === document)
+    } else if (vertical && root === document && !panelsFit.matches)
       window.scrollBy(0, (sign * innerHeight) / 2);
   }
   const backAction = () => {
