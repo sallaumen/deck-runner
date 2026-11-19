@@ -96,6 +96,11 @@ test(
           .first()
           .getAttribute("stroke"),
       );
+      assert.equal(await page.locator("#slots .used rect").count(), 2);
+      assert.match(
+        await page.locator("#slots").getAttribute("aria-label"),
+        /estudio: 1/,
+      );
       const period = page.getByRole("combobox", {
         name: "Período dos gráficos",
       });
