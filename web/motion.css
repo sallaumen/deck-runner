@@ -106,3 +106,8 @@
   #fx-result .fx-caption {font-size:11px;}
   #fx-launch {left:12px;max-width:calc(100% - 24px);}
 }
+
+.reader[data-read-outcome="good"] {--reader-ink:var(--mint);}
+.reader[data-read-outcome="problem"] {--reader-ink:var(--red);}
+.reader[data-read-outcome="stopped"] {--reader-ink:var(--warm);}
+.reader[data-read-outcome] #dialog-log {box-shadow:inset 3px 0 var(--reader-ink);}
