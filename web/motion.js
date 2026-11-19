@@ -31,7 +31,7 @@
     showFor(byId("fx-launch"),1900);
   }
 
-  function showResult(job,batch=[job]) {
+  function showResult(job,batch=[job],enter=true) {
     const node = byId("fx-result");
     node.dataset.state = job.state;
     byId("fx-project").textContent = job.meta.project;
@@ -52,9 +52,13 @@
       time.dateTime="PT"+seconds+"S";
       time.textContent=seconds>=60 ? Math.floor(seconds/60)+"m "+String(seconds%60).padStart(2,"0")+"s" : seconds+"s";
     }
-    showFor(node,3200);
-    byId("fx-sparks").replaceChildren();
-    if (job.state==="passed" && !reduced.matches) victorySparks();
+    if (enter) {
+      showFor(node,3200);
+      byId("fx-sparks").replaceChildren();
+      if (job.state==="passed" && !reduced.matches) victorySparks();
+    } else if(job.state!=="passed") {
+      byId("fx-sparks").replaceChildren();
+    }
   }
 
   const verdicts = {
@@ -84,11 +88,21 @@
     }
   }
 
+  const resultWindow = new Map();
+  function presentResults(jobs) {
+    const node=byId("fx-result");
+    const enter=node.hidden;
+    if (enter) resultWindow.clear();
+    for (const job of jobs) if (Object.hasOwn(verdicts,job.state)) resultWindow.set(job.id,job);
+    const batch=Array.from(resultWindow.values());
+    if (batch.length) showResult(mainResult(batch),batch,enter);
+  }
+
   document.addEventListener("station-change", event => {
     if (document.hidden || !event.detail) return;
     const { jobs, previous } = event.detail;
     const result = mainResult(jobs);
-    if (result && display && !reduced.matches) showResult(result,jobs.filter(j=>Object.hasOwn(verdicts,j.state)));
+    if (result && display && !reduced.matches) presentResults(jobs);
     const started = jobs.find(job=>job.state==="running");
     if (started && display && !reduced.matches) showLaunch(started);
     if (!reduced.matches && jobs.some(job => job.state === "queued")) {
