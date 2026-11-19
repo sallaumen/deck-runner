@@ -101,13 +101,25 @@
     if (batch.length) showResult(mainResult(batch),batch,enter);
   }
 
+  function resetEffects() {
+    for (const node of Array.from(scenes.keys())) dismiss(node);
+    for (const [row, timer] of launched) {clearTimeout(timer);row.classList.remove("launch-glow");}
+    launched.clear();
+    resultWindow.clear();
+    byId("fx-sparks").replaceChildren();
+    for (const selector of ["#used-count",'[data-view="waiting"]',"#live-note","[data-job]"]) {
+      for (const node of document.querySelectorAll(selector)) node.getAnimations().forEach(a=>a.cancel());
+    }
+  }
+  reduced.addEventListener("change",resetEffects);
+
   document.addEventListener("station-change", event => {
     if (document.hidden || !event.detail) return;
     const { jobs, previous } = event.detail;
     const result = mainResult(jobs);
-    if (result && display && !reduced.matches) presentResults(jobs);
+    if (result && display) presentResults(jobs);
     const started = jobs.find(job=>job.state==="running");
-    if (started && display && !reduced.matches) showLaunch(started);
+    if (started && display) showLaunch(started);
     if (!reduced.matches && jobs.some(job => job.state === "queued")) {
       const tab = document.querySelector('[data-view="waiting"]');
       tab.getAnimations().filter(a=>a.id==="queue-arrival").forEach(a=>a.cancel());
