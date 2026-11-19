@@ -86,6 +86,14 @@
   text-overflow: ellipsis;
   white-space: nowrap;
 }
+#fx-launch-task {
+  display: block;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: var(--text);
+  font-size: 13px;
+}
 #fx-launch > div {
   min-width: 0;
 }
