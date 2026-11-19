@@ -28,7 +28,23 @@
     <main>
       <div class="overview">
         <div class="headline">
-          <h1 id="summary">Conectando…</h1>
+          <div class="notice-slot">
+            <p
+              class="message"
+              id="message"
+              role="status"
+              tabindex="0"
+              data-scroll
+            ></p>
+            <p id="run-context" hidden></p>
+          </div>
+          <h1 id="summary">
+            <span class="runner-emblem" aria-hidden="true" hidden
+              ><i class="fx-pilot"></i
+            ></span>
+            <span id="summary-name">Conectando…</span>
+            <span id="summary-more" hidden></span>
+          </h1>
           <p class="metrics">
             <span>RAM livre <b id="ram">—</b></span
             ><span>Disco livre <b id="disk">—</b></span>
@@ -41,15 +57,6 @@
               <span aria-hidden="true">›</span>
             </button>
           </p>
-          <div class="notice-slot">
-            <p
-              class="message"
-              id="message"
-              role="status"
-              tabindex="0"
-              data-scroll
-            ></p>
-          </div>
         </div>
         <div class="capacity">
           <div class="capacity-title">
@@ -341,6 +348,10 @@
       <div id="reader-heading" role="group" aria-labelledby="dialog-title">
         <h2 id="dialog-title"></h2>
         <p id="dialog-context" hidden></p>
+        <p id="reader-duration" hidden>
+          Tempo de execução
+          <time id="reader-clock" role="timer" aria-live="off"></time>
+        </p>
       </div>
       <pre
         id="dialog-log"

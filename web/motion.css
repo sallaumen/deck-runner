@@ -111,6 +111,31 @@
   }
 }
 
+@media (prefers-reduced-motion: no-preference) {
+  :root[data-effects="arcade"] #summary .runner-emblem:not([hidden]) .fx-pilot {
+    animation: working-stride 1.6s steps(1, end) infinite;
+  }
+}
+@keyframes working-stride {
+  0%,
+  50%,
+  100% {
+    background-position-x: 0%;
+  }
+  10%,
+  60% {
+    background-position-x: 33.333%;
+  }
+  20%,
+  70% {
+    background-position-x: 66.667%;
+  }
+  30%,
+  80% {
+    background-position-x: 100%;
+  }
+}
+
 #fx-result {
   --ink: #bcffbc;
   --rim: #73dbab;

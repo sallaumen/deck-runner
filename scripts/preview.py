@@ -18,19 +18,21 @@ def sample(state):
     now = time.time()
     projects = ["atlas", "estudio", "orbita", "sinal"]
 
-    def job(n, project, label, owner, state, elapsed):
+    def job(n, project, label, owner, state, elapsed, activity=""):
+        finished = None if state == "running" else now - elapsed
+        started = now - elapsed if finished is None else finished - (28 + n * 9)
         return dict(
             id=f"{n:012x}",
             meta=dict(
                 project=project, label=label, owner=owner, command=["mix", "test"]
             ),
             state=state,
-            started=now - elapsed,
-            created=now - elapsed - 8,
-            finished=now - elapsed,
+            started=started,
+            created=started - 8,
+            finished=finished,
             memory=n * 193 * 1024**2,
             cancel=0,
-            activity="Executando testes…",
+            activity=activity,
         )
 
     jobs = [
@@ -56,9 +58,11 @@ def sample(state):
                     "Claude · tarefa 43",
                     "running",
                     84,
+                    "Running ExUnit with seed: 4312",
                 ),
                 job(
-                    2, "atlas", "Busca por catálogo", "Codex · tarefa 15", "running", 42
+                    2, "atlas", "Busca por catálogo", "Codex · tarefa 15", "running", 42,
+                    "Compiling 18 files (.ex)",
                 ),
             ]
         )

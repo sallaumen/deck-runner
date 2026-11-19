@@ -400,6 +400,74 @@ footer,
   display: block;
   font: 11px var(--mono);
 }
+#summary {
+  display: flex;
+  align-items: center;
+  gap: 0.24em;
+  min-width: 0;
+}
+#summary-name {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+#summary-more {
+  flex: none;
+  font: 650 0.48em var(--mono);
+  color: var(--warm);
+}
+#summary .runner-emblem {
+  display: grid;
+  place-items: center;
+  flex: none;
+  width: 1.14em;
+  height: 1em;
+  background: #203935;
+  border: 1px solid #467666;
+  border-radius: 0.19em 0.06em;
+}
+#summary .fx-pilot {
+  width: 0.92em;
+  height: 0.92em;
+}
+#run-context {
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+  color: var(--mint);
+  font: 650 11px/1.5 var(--mono);
+  text-transform: uppercase;
+  letter-spacing: 0.09em;
+}
+#message:not(:empty) + #run-context {
+  display: none;
+}
+.task-usage .stopwatch {
+  display: inline-block;
+  min-width: 5ch;
+  font: 650 clamp(17px, 1.75vw, 26px)/1 var(--mono);
+  font-variant-numeric: tabular-nums;
+  letter-spacing: -0.055em;
+  color: var(--mint);
+}
+.job .task-usage {
+  font-size: clamp(17px, 1.75vw, 26px);
+  inline-size: 8ch;
+}
+#reader-duration {
+  font: 12px var(--mono);
+  color: var(--muted);
+}
+#reader-clock {
+  color: var(--mint);
+}
+[data-state="offline"] .stopwatch {
+  color: var(--muted);
+}
+[data-state="busy"] .work {
+  border-color: #4d756c;
+}
 .job-title,
 .history-row > div > a {
   color: var(--text);
@@ -1153,7 +1221,8 @@ footer {
   min-width: 0;
 }
 .task-detail code {
-  flex: 0 0 52%;
+  max-width: 42%;
+  flex: 0 1 auto;
   border: 1px solid var(--line);
   border-radius: 4px;
   padding: 2px 6px;
@@ -1161,6 +1230,12 @@ footer {
 }
 #work-space .task-detail span {
   flex: 1;
+}
+.task-output b {
+  color: var(--mint);
+}
+.task-output {
+  color: #c9ded5;
 }
 #dialog-title {
   display: -webkit-box;
