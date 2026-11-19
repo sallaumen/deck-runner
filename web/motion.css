@@ -48,3 +48,7 @@
 #fx-verdict {font:900 italic clamp(38px,6.5vw,88px)/1 system-ui,sans-serif;letter-spacing:-.075em;color:var(--ink);text-shadow:3px 4px #0a1c22;}
 .fx-caption {border-top:1px solid #aacdc44f;padding-top:12px;color:#d9e9df;}
 #fx-job-name {display:block;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+
+#fx-result[data-state="failed"] {--ink:#ffb797;--rim:#ec866d;--plate:#35252b}
+#fx-result[data-state="failed"] .fx-emblem {clip-path:polygon(25% 0,75% 0,100% 25%,100% 75%,75% 100%,25% 100%,0 75%,0 25%);}
+#fx-result[data-state="failed"] .fx-shell::before {background:radial-gradient(ellipse at 18% 77%,#653330aa,transparent 63%),var(--plate);}
