@@ -52,3 +52,8 @@
 #fx-result[data-state="failed"] {--ink:#ffb797;--rim:#ec866d;--plate:#35252b}
 #fx-result[data-state="failed"] .fx-emblem {clip-path:polygon(25% 0,75% 0,100% 25%,100% 75%,75% 100%,25% 100%,0 75%,0 25%);}
 #fx-result[data-state="failed"] .fx-shell::before {background:radial-gradient(ellipse at 18% 77%,#653330aa,transparent 63%),var(--plate);}
+
+#fx-result:is([data-state="cancelled"],[data-state="interrupted"],[data-state="timeout"],[data-state="disk_limit"],[data-state="output_limit"]) {
+  --ink:#ffcf86;--rim:#ce9d60;--plate:#312e29;
+}
+#fx-result:not([data-state="passed"]):not([data-state="failed"]) #fx-verdict {font-size:clamp(30px,4.7vw,60px);letter-spacing:-.055em}
