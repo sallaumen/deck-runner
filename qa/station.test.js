@@ -201,6 +201,10 @@ test(
       );
       await page.getByRole("link", { name: "Abrir controles" }).click();
       await page.locator("#filter").selectOption("atlas");
+      assert.equal(new URL(page.url()).searchParams.get("project"), "atlas");
+      await page.reload();
+      await page.locator("#running .job").first().waitFor();
+      assert.equal(await page.locator("#filter").inputValue(), "atlas");
       assert.equal(await page.locator("#running .job").count(), 1);
       await page
         .locator("#activity-totals th")
