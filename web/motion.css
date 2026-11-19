@@ -85,3 +85,7 @@
 #fx-mode {width:100%;}
 #fx-mode-help {min-height:2.8em;margin:8px 0 12px;font-size:14px;color:var(--muted);}
 @media (min-width:720px) and (max-height:600px) { #fx-settings {min-height:22px;} }
+
+#fx-audition {margin:0 0 18px;padding:0;border:0;}
+#fx-audition legend {font-size:14px;color:var(--muted);margin-bottom:6px;padding:0;}
+#fx-audition>div {display:flex;gap:6px;flex-wrap:wrap;}
