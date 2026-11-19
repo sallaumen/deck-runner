@@ -31,7 +31,7 @@
     showFor(byId("fx-launch"),1900);
   }
 
-  function showResult(job,batch=[job],enter=true) {
+  function showResult(job,batch=[job],enter=true,preview=false) {
     const node = byId("fx-result");
     node.dataset.state = job.state;
     byId("fx-project").textContent = job.meta.project;
@@ -62,6 +62,7 @@
     } else if(job.state!=="passed") {
       byId("fx-sparks").replaceChildren();
     }
+    updateScore(job,preview);
   }
 
   const verdicts = {
@@ -152,7 +153,7 @@
     const sample={id:"000000000000",state,started:now-24,finished:now,
       meta:{project:"Demonstração",label:"Prévia dos efeitos do painel"}};
     if(state==="running") showLaunch(sample);
-    else {showResult(sample);byId("fx-run-id").textContent="PRÉVIA";}
+    else {showResult(sample,[sample],true,true);byId("fx-run-id").textContent="PRÉVIA";}
   });
 
   // Opening a log or an operator dialog gives that surface the user's attention.
@@ -186,6 +187,29 @@
     if(recentInstance!==data?.instance) {recentInstance=data?.instance;recent.length=0;drawRecent();}
   });
   byId("fx-recent").addEventListener("toggle",drawRecent);
+
+  function recentWins(job) {
+    const sample=data.jobs.filter(item=>item.meta.project===job.meta.project && Number.isFinite(item.finished) && Object.hasOwn(verdicts,item.state))
+      .sort((a,b)=>b.finished-a.finished || b.id.localeCompare(a.id)).slice(0,12);
+    if(sample[0]?.id!==job.id) return 0;
+    const stop=sample.findIndex(item=>item.state!=="passed");
+    return stop<0?sample.length:stop;
+  }
+  function updateScore(job,preview) {
+    const combo=byId("fx-combo"), score=byId("fx-score");
+    const n=job.state==="passed" ? (preview?3:recentWins(job)) : 0;
+    const value=n===12?"12+":String(n);
+    const changed=combo.hidden || score.textContent!==value || combo.dataset.job!==job.id;
+    combo.hidden=n<2;
+    combo.dataset.job=job.id;
+    score.textContent=value;
+    if(n>=2 && changed && !reduced.matches) {
+      score.getAnimations().forEach(a=>a.cancel());
+      score.animate([{transform:"scale(.64) rotate(-8deg)"},{transform:"translateY(-8px) scale(1.26) rotate(5deg)",offset:.32},
+        {transform:"translateY(2px) scale(.92)",offset:.67},{transform:"none"}],
+        {duration:520,delay:190,easing:"cubic-bezier(.24,.68,.27,1)",fill:"backwards"});
+    }
+  }
 
   document.addEventListener("station-change", event => {
     if (document.hidden || !event.detail) return;

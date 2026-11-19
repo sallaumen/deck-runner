@@ -119,3 +119,8 @@
 #fx-recent-list li {display:flex;gap:12px;padding:5px 0;font-size:13px;overflow-wrap:anywhere;}
 #fx-recent-list time {font:12px var(--mono);color:var(--muted);flex:none;}
 #fx-no-events {font-size:13px;margin:0 0 10px;color:var(--muted);}
+
+#fx-combo {margin-left:auto;display:grid;grid-template-columns:auto auto;align-items:center;gap:6px;color:#ffd381;}
+#fx-score {display:inline-block;font:900 italic clamp(32px,4.6vw,60px)/1 system-ui;letter-spacing:-.075em;transform-origin:50% 75%;text-shadow:2px 3px #102329;}
+#fx-combo small {font:600 10px/1.2 var(--mono);}
+@media(max-width:719px){#fx-combo {gap:1px;grid-template-columns:auto;text-align:center;} #fx-combo small{font-size:9px} }
