@@ -12,6 +12,12 @@
   document.addEventListener("station-change", event => {
     if (document.hidden || !event.detail) return;
     const { jobs, previous } = event.detail;
+    if (!reduced.matches && jobs.some(job => job.state === "queued")) {
+      const tab = document.querySelector('[data-view="waiting"]');
+      tab.getAnimations().filter(a=>a.id==="queue-arrival").forEach(a=>a.cancel());
+      tab.animate([{color:"#ffc278",boxShadow:"inset 0 -3px #ffc278"},{color:"var(--text)",boxShadow:"inset 0 0 transparent"}],
+        {id:"queue-arrival",duration:760,easing:"cubic-bezier(.22,1,.36,1)"});
+    }
     if (!reduced.matches) {
       const delta = data.jobs.filter(j => j.state === "running").length - previous.jobs.filter(j => j.state === "running").length;
       if (delta) {
