@@ -9,7 +9,7 @@ import { webkit } from "playwright";
 test(
   "station, controls, resource limits and reconnection",
   { timeout: 90000 },
-  async () => {
+  async (t) => {
     const fixture = fileURLToPath(
       new URL("../scripts/preview.py", import.meta.url),
     );
@@ -31,9 +31,7 @@ test(
       const errors = [];
       page.on("pageerror", (error) => errors.push(error.message));
       await page.goto(url.href);
-      await page
-        .getByRole("heading", { name: "Testes em andamento" })
-        .waitFor();
+      await page.getByRole("heading", { name: "estudio / atlas" }).waitFor();
       assert.equal(await page.locator("#usage").innerText(), "2 / 5");
       assert.equal(await page.locator("#history .history-row").count(), 4);
       const sample = await (
@@ -45,6 +43,10 @@ test(
           await Promise.all(
             document
               .getAnimations()
+              .filter(
+                (animation) =>
+                  animation.effect?.getTiming().iterations !== Infinity,
+              )
               .map((animation) => animation.finished.catch(() => {})),
           );
           await new Promise((resolve) =>
@@ -743,6 +745,82 @@ test(
       const noteBefore = await page.locator("#live-note").textContent();
       await page.evaluate(() => refresh());
       assert.equal(await page.locator("#live-note").textContent(), noteBefore);
+      await t.test(
+        "stopwatches tick between reads, freeze offline and settle on the recorded finish",
+        async () => {
+          await page.goto("about:blank");
+          await page.clock.install({ time: new Date("2030-01-01T00:00:00Z") });
+          await page.clock.pauseAt(new Date("2030-01-01T00:00:05Z"));
+          const stamp = 1_700_000_000;
+          const jobs = sample.jobs
+            .filter((j) => j.state === "running")
+            .map((j, i) => ({
+              ...j,
+              started: stamp - (i ? 3599 : 59),
+              finished: null,
+              activity: "Compiling 15 files (.ex)",
+            }));
+          shown = { ...sample, observed_at: stamp, jobs };
+          let connected = true,
+            reads = 0;
+          await page.unroute("**/api/status");
+          await page.route("**/api/status", (route) => {
+            reads++;
+            return connected
+              ? route.fulfill({ json: shown })
+              : route.fulfill({ status: 503 });
+          });
+          await page.goto(url.origin + "/?screen=1&station=1");
+          const row = page.locator('#running [data-job="' + jobs[0].id + '"]');
+          const first = row.locator("time");
+          const second = page.locator(
+            '#running [data-job="' + jobs[1].id + '"] time',
+          );
+          await first.waitFor({ state: "attached" });
+          assert.equal(await first.textContent(), "00:59");
+          assert.equal(await second.textContent(), "59:59");
+          assert.match(await row.innerText(), /Compilando 15 arquivos .ex/);
+          await row.locator("a").focus();
+          const identity = await first.elementHandle();
+          const before = reads;
+          await page.clock.runFor(1000);
+          assert.equal(await first.textContent(), "01:00");
+          assert.equal(await second.textContent(), "1:00:00");
+          await page.clock.runFor(1000);
+          assert.equal(await first.textContent(), "01:01");
+          assert.equal(await second.textContent(), "1:00:01");
+          assert.equal(reads, before);
+          assert.ok(
+            await first.evaluate(
+              (el, ref) =>
+                el === ref &&
+                el.closest(".job").contains(document.activeElement),
+              identity,
+            ),
+          );
+          await row.locator("a").evaluate((el) => el.click());
+          const reader = page.locator("#reader-clock");
+          assert.equal(await reader.textContent(), "01:01");
+          connected = false;
+          await refresh();
+          await page.clock.runFor(1000);
+          assert.equal(await reader.textContent(), "01:01");
+          assert.equal(await first.textContent(), "01:01");
+          connected = true;
+          shown.observed_at = stamp + 7;
+          await refresh();
+          assert.equal(await reader.textContent(), "01:06");
+          shown.jobs = jobs.map((j, i) =>
+            i ? j : { ...j, state: "passed", finished: stamp + 7 },
+          );
+          await refresh();
+          assert.equal(await first.count(), 0);
+          assert.equal(await reader.getAttribute("datetime"), "PT66S");
+          await page.clock.runFor(1100);
+          assert.equal(await reader.textContent(), "01:06");
+          assert.ok((await reader.getAttribute("data-started")) === null);
+        },
+      );
       assert.deepEqual(errors, []);
     } finally {
       try {

@@ -105,7 +105,26 @@ test(
         "estudio",
       );
       assert.equal(await page.locator("#used-count").innerText(), "1");
+      const pilot = page.locator("#summary .fx-pilot");
+      const stride = () =>
+        pilot.evaluate((el) => getComputedStyle(el).animationName);
+      assert.equal(await stride(), "working-stride");
+      await update([
+        jobs[0],
+        { ...jobs[1], activity: "Compiling 7 files (.ex)" },
+      ]);
+      const latest = page.locator("#running .task-output");
+      assert.ok(await latest.evaluate((el) => el.getAnimations().length > 0));
+      await page.emulateMedia({ reducedMotion: "reduce" });
+      assert.equal(await stride(), "none");
+      await update([
+        jobs[0],
+        { ...jobs[1], activity: "Running ExUnit with seed: 7" },
+      ]);
+      assert.equal(await latest.evaluate((el) => el.getAnimations().length), 0);
+      await page.emulateMedia({ reducedMotion: "no-preference" });
       await update([job(1, "passed", -3), job(2, "passed")]);
+      assert.ok(await pilot.isHidden());
       await result.waitFor();
       assert.equal(await page.locator("#fx-verdict").innerText(), "Passou!");
       assert.equal(await page.locator("#fx-score").innerText(), "2");

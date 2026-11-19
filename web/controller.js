@@ -37,17 +37,25 @@
 
   async function readOutput() {
     const view = reading;
-    if (
-      document.hidden ||
-      !dialog.open ||
-      !view ||
-      view.loading ||
-      view.complete
-    )
-      return;
-    view.loading = true;
+    if (document.hidden || !dialog.open || !view) return;
     const job = data?.jobs.find((j) => j.id === view.id);
     const live = job?.state === "running" || job?.state === "queued";
+    const timer = byId("reader-clock");
+    const timed =
+      Number.isFinite(job?.started) &&
+      (job.state === "running" || Number.isFinite(job.finished));
+    byId("reader-duration").hidden = !timed;
+    if (timed && job.state === "running") {
+      timer.dataset.started = job.started;
+    } else {
+      delete timer.dataset.started;
+      if (timed) {
+        const seconds = Math.max(0, Math.floor(job.finished - job.started));
+        timer.textContent = stopwatch(seconds);
+        timer.dateTime = "PT" + seconds + "S";
+      }
+    }
+    tickStopwatches();
     const state =
       { running: "Em execução", queued: "Na fila" }[job?.state] ||
       labels[job?.state] ||
@@ -92,6 +100,8 @@
       .join(" · ");
     if (context.textContent !== details) context.textContent = details;
     context.hidden = false;
+    if (view.loading || view.complete) return;
+    view.loading = true;
     try {
       const res = await fetch(view.href, {
         cache: "no-store",
@@ -121,6 +131,9 @@
     if (dialog.open || !reading) return;
     const view = reading;
     reading = null;
+    byId("reader-duration").hidden = true;
+    delete byId("reader-clock").dataset.started;
+    tickStopwatches();
     view.cancel.abort();
     const links = [...document.querySelectorAll("a[href]")];
     const target =

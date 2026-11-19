@@ -10,6 +10,7 @@ Na tela de acompanhamento, abra **Efeitos** no rodapé. Escolha **Arcade** e, em
 |---|---|
 | Uma tarefa entrou na fila | A aba **Na fila** ganha um pulso âmbar. |
 | Um teste começou | O piloto atravessa a lateral, a linha acende e o número de vagas em uso salta. |
+| Há testes rodando | No modo Arcade, o piloto caminha junto ao nome dos projetos ativos. Quando chega uma linha nova de saída, a atividade da tarefa ganha um breve destaque. Em Discreto ou com movimento reduzido, o piloto fica parado. |
 | Um teste passou | Um placar menta aparece por 3,2 segundos. Estrelas acompanham a entrada. O número dourado conta aprovações consecutivas do mesmo projeto a partir da segunda. O painel examina até 12 resultados recentes por projeto e exibe **12+** ao atingir esse limite. |
 | Um teste falhou | O placar coral entra de lado e freia. O texto identifica a tarefa e a duração aparece quando o executor registrou início e fim. |
 | O executor interrompeu um teste | Um placar âmbar mostra o motivo, como cancelamento, tempo esgotado ou limite de disco. |

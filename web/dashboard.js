@@ -37,8 +37,16 @@ const resultTime = (s) => {
         " · " +
         clock(s);
 };
-const duration = (s) =>
-  s < 60 ? Math.floor(s) + " s" : Math.floor(s / 60) + " min";
+function stopwatch(seconds) {
+  const pair = (n) => String(n).padStart(2, "0");
+  const minutes = Math.floor(seconds / 60);
+  return (
+    (minutes >= 60 ? Math.floor(minutes / 60) + ":" : "") +
+    pair(minutes % 60) +
+    ":" +
+    pair(seconds % 60)
+  );
+}
 const bars = (used, total) =>
   Array.from(
     { length: total },
@@ -49,6 +57,151 @@ let data,
   pending = false,
   offline = false;
 const projectColors = new Map();
+let sampleTime = 0,
+  sampleMark = 0,
+  advancing = false,
+  clockTimer;
+function stationTime() {
+  return sampleTime + (advancing ? (performance.now() - sampleMark) / 1000 : 0);
+}
+function syncStopwatches(incoming, previous) {
+  const observed = Number.isFinite(incoming.observed_at)
+    ? incoming.observed_at
+    : Date.now() / 1000;
+  const same = previous && previous.instance === incoming.instance;
+  const estimate = stationTime();
+  if (!incoming.alive && same) sampleTime = estimate;
+  else
+    sampleTime =
+      same && advancing && Math.abs(estimate - observed) < 2
+        ? Math.max(estimate, observed)
+        : observed;
+  sampleMark = performance.now();
+  advancing = Boolean(incoming.alive);
+}
+function tickStopwatches() {
+  clearTimeout(clockTimer);
+  if (document.hidden) return;
+  const now = stationTime();
+  let next = Infinity;
+  for (const node of document.querySelectorAll(
+    "#running:not([hidden]) time[data-started], #station-dialog[open] time[data-started]",
+  )) {
+    const elapsed = Math.max(0, now - Number(node.dataset.started));
+    const seconds = Math.floor(elapsed);
+    const value = stopwatch(seconds);
+    if (node.textContent !== value) {
+      node.textContent = value;
+      node.dateTime = "PT" + seconds + "S";
+    }
+    next = Math.min(next, (1 - (elapsed - seconds)) * 1000);
+  }
+  if (advancing && Number.isFinite(next))
+    clockTimer = setTimeout(tickStopwatches, Math.max(16, Math.ceil(next)));
+}
+
+function updateHeadline(active, queued) {
+  const busy = active.length > 0 && data.alive && !offline;
+  const names = [...new Set(active.map((job) => job.meta.project))];
+  const summary = byId("summary-name");
+  const extra = byId("summary-more");
+  const context = byId("run-context");
+  byId("summary").querySelector(".runner-emblem").hidden = !busy;
+  if (busy) {
+    summary.textContent = names.slice(0, 2).join(" / ");
+    summary.title = names.join(", ");
+    extra.hidden = names.length <= 2;
+    if (!extra.hidden) {
+      extra.textContent = "+" + (names.length - 2);
+      extra.setAttribute(
+        "aria-label",
+        "Outros projetos: " + names.slice(2).join(", "),
+      );
+      extra.title = names.slice(2).join(", ");
+    }
+    context.textContent =
+      (active.length === 1
+        ? "1 teste em execução"
+        : active.length + " testes em execução") +
+      (data.paused ? " · fila pausada" : "");
+  } else {
+    extra.hidden = true;
+    summary.removeAttribute("title");
+    summary.textContent = offline
+      ? "Reconectando…"
+      : !data.alive
+        ? "Executor sem resposta"
+        : data.paused
+          ? "Fila pausada"
+          : queued.length
+            ? "Aguardando vaga"
+            : "Pronto para testar";
+  }
+  context.hidden = !busy;
+}
+function activityLine(job) {
+  if (job.cancel) return "Cancelamento solicitado";
+  const line = (job.activity || "").trim();
+  if (!line) return "Preparando execução";
+  if (/^(?:Source|Snapshot|Tree): [0-9a-f]{40,64}$/.test(line))
+    return "Cópia do projeto preparada";
+  const compile = /^Compiling (\d+) files? \((\.[\w]+)\)$/.exec(line);
+  if (compile)
+    return (
+      "Compilando " +
+      compile[1] +
+      (compile[1] === "1" ? " arquivo " : " arquivos ") +
+      compile[2]
+    );
+  if (line.startsWith("Resolving Hex dependencies"))
+    return "Resolvendo dependências do Mix";
+  if (
+    line.startsWith("Running ExUnit with seed:") ||
+    (/^\.{2,}$/.test(line) && job.meta.command[0] === "mix")
+  )
+    return "Executando testes do ExUnit";
+  return line;
+}
+function highlightOutput(previous) {
+  if (
+    !previous ||
+    previous.instance !== data.instance ||
+    !data.alive ||
+    document.hidden ||
+    document.documentElement.dataset.effects !== "arcade" ||
+    matchMedia("(prefers-reduced-motion: reduce)").matches ||
+    document.querySelector("dialog[open]")
+  )
+    return;
+  const earlier = new Map(
+    previous.jobs
+      .filter((j) => j.state === "running")
+      .map((j) => [j.id, j.activity]),
+  );
+  const changed = new Set(
+    data.jobs
+      .filter(
+        (j) =>
+          j.state === "running" &&
+          j.activity &&
+          earlier.has(j.id) &&
+          earlier.get(j.id) !== j.activity,
+      )
+      .map((j) => j.id),
+  );
+  for (const row of document.querySelectorAll("#running:not([hidden]) .job")) {
+    if (!changed.has(row.dataset.job)) continue;
+    const line = row.querySelector(".task-output");
+    if (line.getClientRects().length)
+      line.animate(
+        [
+          { color: "#fff0be", transform: "translateX(3px)" },
+          { color: "#c9ded5", transform: "none" },
+        ],
+        { duration: 600, easing: "ease-out" },
+      );
+  }
+}
 function projectDot(name) {
   const ink = projectColors.get(name) || "none";
   return (
@@ -226,16 +379,7 @@ function render() {
   byId("slots").innerHTML = bars(active.length, data.slots);
   byId("ram").textContent = gib(data.available_memory) + " GiB";
   byId("disk").textContent = gib(data.disk_free) + " GiB";
-  byId("summary").textContent = data.paused
-    ? "Fila pausada"
-    : active.length
-      ? active.length === 1
-        ? "Teste em andamento"
-        : "Testes em andamento"
-      : queued.length
-        ? "Aguardando vaga"
-        : "Pronto para testar";
-  if (!data.alive) byId("summary").textContent = "Executor sem resposta";
+  updateHeadline(active, queued);
   if (!offline && byId("message").textContent !== (data.reason || ""))
     byId("message").textContent = data.reason || "";
   byId("policy").textContent =
@@ -275,9 +419,13 @@ function render() {
     const title = display
       ? '<a class="job-title" href="/logs/' + esc(j.id) + '">' + name + "</a>"
       : name;
-    const status = running
-      ? duration(Date.now() / 1000 - j.started)
-      : clock(j.created);
+    const status = !running
+      ? "<time>" + clock(j.created) + "</time>"
+      : Number.isFinite(j.started)
+        ? '<time class="stopwatch" role="timer" aria-live="off" aria-label="Tempo em execução" data-started="' +
+          j.started +
+          '">—</time>'
+        : '<time class="stopwatch">—</time>';
     const links = display
       ? ""
       : '<div class="links"><a href="/logs/' +
@@ -287,16 +435,18 @@ function render() {
         '">Detalhes</a>' +
         cancel(j) +
         "</div>";
+    const command = esc(j.meta.command.join(" "));
+    const activity = esc(activityLine(j));
     const detail = running
-      ? '<div class="task-detail"><code title="' +
-        esc(j.meta.command.join(" ")) +
+      ? '<div class="task-detail"><span class="task-output" title="Última atividade: ' +
+        esc(j.activity || activityLine(j)) +
+        '"><b aria-hidden="true">›</b> ' +
+        activity +
+        '</span><code title="' +
+        command +
         '">' +
-        esc(j.meta.command.join(" ")) +
-        '</code><span title="' +
-        esc(j.activity) +
-        '">' +
-        esc(j.activity || "Preparando execução") +
-        "</span></div>"
+        command +
+        "</code></div>"
       : "";
     return (
       '<div class="task-row ' +
@@ -317,9 +467,8 @@ function render() {
       project +
       "</b> · " +
       owner +
-      '</small></div><div class="task-usage"><time>' +
+      '</small></div><div class="task-usage">' +
       status +
-      "</time>" +
       (running
         ? "<small>" + Math.round(j.memory / 1048576) + " MiB</small>"
         : "") +
@@ -399,13 +548,14 @@ function render() {
     );
   }
   if (offline) showOffline();
+  tickStopwatches();
   byId("updated").textContent =
     (data.instance === "preview"
       ? "Demonstração local · "
       : "Última leitura · ") + clock(lastRead);
 }
 function showOffline() {
-  byId("summary").textContent = "Reconectando…";
+  byId("summary-name").textContent = "Reconectando…";
   document.body.dataset.state = "offline";
   byId("connection").textContent = "Sem conexão";
   byId("connection").classList.remove("online");
@@ -424,10 +574,12 @@ async function refresh() {
     if (!r.ok) throw Error();
     const previous = offline || resync ? null : data;
     const incoming = await r.json();
+    syncStopwatches(incoming, previous);
     data = incoming;
     lastRead = Date.now() / 1000;
     offline = false;
     render();
+    highlightOutput(previous);
     if (!previous || previous.instance !== data.instance)
       document.dispatchEvent(new Event("station-resync"));
     signalChanges(previous?.instance === data.instance ? previous : null);
@@ -437,6 +589,8 @@ async function refresh() {
       : "Executor sem resposta";
     byId("connection").classList.toggle("online", data.alive);
   } catch {
+    sampleTime = stationTime();
+    advancing = false;
     offline = true;
     if (data) render();
     else showOffline();
@@ -579,6 +733,7 @@ function fromStream() {
 }
 function connect() {
   if (document.hidden) {
+    clearTimeout(clockTimer);
     events?.close();
     events = null;
     resync = true;
@@ -592,6 +747,8 @@ function connect() {
 }
 document.addEventListener("visibilitychange", connect);
 window.addEventListener("pagehide", () => {
+  clearTimeout(clockTimer);
+  resync = true;
   events?.close();
   events = null;
 });

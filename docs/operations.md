@@ -27,6 +27,8 @@ Ao entrar na área de trabalho do Plasma, o atalho de inicialização abre **Dec
 
 Na tela do Deck, alterne **Em execução** e **Na fila** à esquerda ou **Resultados** e **Projetos** à direita. Quando a lista ocupa mais de uma página, as setas junto ao título mostram os itens seguintes. A paginação dos totais por projeto mantém as linhas de todos os projetos nos gráficos.
 
+Durante os testes, o título mostra os projetos em execução. Se houver mais de dois, o número ao lado indica quantos outros estão ativos. Cada linha identifica a tarefa, o projeto, o agente e a última atividade informada pelo teste. O cronômetro usa o horário do Deck e conta os segundos entre as leituras da fila, inclusive quando o log está aberto. Quando a conexão cai, o relógio para. Ao reconectar, volta ao tempo do executor. Ao terminar, o log mostra a duração registrada.
+
 No Deck ou no painel do Mac, selecione o nome de uma tarefa na tela de acompanhamento para ler o log. Se o título ou o comando forem longos, mova o foco para o cabeçalho e use o direcional para percorrer o texto. O cabeçalho e a saída rolam separadamente, e **Voltar** permanece no mesmo lugar. A saída acompanha as novas linhas enquanto você estiver no fim. Ao rolar para cima, o painel mantém sua posição. **Ir ao fim** volta a acompanhar a execução. Quando o teste termina, o painel faz a última leitura e mostra o resultado. **Voltar** devolve o foco à tarefa.
 
 ## Comparar o uso por projeto
