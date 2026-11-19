@@ -36,16 +36,28 @@
     node.dataset.state = job.state;
     byId("fx-project").textContent = job.meta.project;
     byId("fx-run-id").textContent = "#" + job.id.slice(-6);
-    byId("fx-verdict").textContent = job.state === "failed" ? "Falhou" : "Passou!";
-    byId("fx-symbol").textContent = job.state === "failed" ? "×" : "✓";
+    const verdict = verdicts[job.state];
+    byId("fx-verdict").textContent = verdict.title;
+    byId("fx-symbol").textContent = verdict.symbol;
     byId("fx-job-name").textContent = job.meta.label;
     showFor(node,3200);
+  }
+
+  const verdicts = {
+    passed:{title:"Passou!",symbol:"✓",rank:1}, failed:{title:"Falhou",symbol:"×",rank:5},
+    cancelled:{title:"Cancelado",symbol:"■",rank:2}, interrupted:{title:"Interrompido",symbol:"Ⅱ",rank:3},
+    timeout:{title:"Tempo esgotado",symbol:"◷",rank:4}, disk_limit:{title:"Limite de disco",symbol:"!",rank:4},
+    output_limit:{title:"Limite de log",symbol:"!",rank:4}
+  };
+  function mainResult(jobs) {
+    return jobs.filter(j=>Object.hasOwn(verdicts,j.state)).sort((a,b)=>
+      verdicts[b.state].rank-verdicts[a.state].rank || (b.finished||b.created)-(a.finished||a.created))[0];
   }
 
   document.addEventListener("station-change", event => {
     if (document.hidden || !event.detail) return;
     const { jobs, previous } = event.detail;
-    const result = jobs.find(job=>job.state==="failed") || jobs.find(job=>job.state==="passed");
+    const result = mainResult(jobs);
     if (result && display && !reduced.matches) showResult(result);
     const started = jobs.find(job=>job.state==="running");
     if (started && display && !reduced.matches) showLaunch(started);
