@@ -210,7 +210,8 @@ function render() {
     .join("");
   if (!workChosen && !byId("work-space").contains(document.activeElement))
     activate(!current.length && waiting.length ? "waiting" : "running");
-  byId("usage").textContent = active.length + " / " + data.slots;
+  byId("used-count").textContent = String(active.length);
+  byId("slot-count").textContent = " / " + data.slots;
   byId("runningCount").textContent = current.length;
   document.body.dataset.state = data.paused
     ? "paused"

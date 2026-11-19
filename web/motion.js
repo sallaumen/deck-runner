@@ -12,6 +12,17 @@
   document.addEventListener("station-change", event => {
     if (document.hidden || !event.detail) return;
     const { jobs, previous } = event.detail;
+    if (!reduced.matches) {
+      const delta = data.jobs.filter(j => j.state === "running").length - previous.jobs.filter(j => j.state === "running").length;
+      if (delta) {
+        const count = byId("used-count");
+        count.getAnimations().forEach(a => a.cancel());
+        const lift = delta > 0 ? -6 : 4;
+        count.animate([{transform:"scale(1)"},{transform:"translateY("+lift+"px) rotate(-6deg) scale(1.32)",offset:.26},
+          {transform:"translateY(1px) scale(.96)",offset:.66},{transform:"scale(1)"}],
+          {duration:440,easing:"cubic-bezier(.2,.64,.26,1)"});
+      }
+    }
     if (!reduced.matches) jobs.filter(j => j.state === "running").forEach(lightLaunch);
   });
 })();
