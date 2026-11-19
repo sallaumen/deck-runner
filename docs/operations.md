@@ -66,7 +66,7 @@ A mudança vale para a próxima admissão e fica salva após suspensão, reiníc
 
 ## Armazenamento dos testes
 
-Em **Testes no disco**, ao lado do disco livre, confira os blocos ocupados pelas cópias de trabalho, caches de compilação, repositórios Git e arquivos das tarefas. A tabela separa os valores por projeto. Uma medição em segundo plano é compartilhada pelos painéis e reutilizada por até três minutos. O horário indica quando ela terminou. Imagens do Podman, bancos externos e jogos ficam fora desses totais.
+Em **Testes no disco**, ao lado do disco livre, confira os blocos ocupados pelas cópias de trabalho, caches de compilação, repositórios Git e arquivos das tarefas. A margem indica quantos bytes ainda separam o disco livre do limite de admissão. Quando ela acaba, a janela calcula quanto liberar para aceitar novos testes. A tabela separa os valores por projeto. Uma medição em segundo plano é compartilhada pelos painéis e reutilizada por até três minutos. O horário indica quando ela terminou. Imagens do Podman, bancos externos e jogos ficam fora desses totais.
 
 **Limpar cópias** mostra quantos testes encerrados entram na limpeza. **Confirmar limpeza** remove somente as cópias daquela medição que o Git reconhece e que continuam encerradas. O cache, os repositórios, os logs e o histórico permanecem disponíveis. A janela pode ser fechada durante a operação. Ao terminar, o painel mede de novo. Sem uma limpeza manual, continua valendo a retenção normal das cópias por um dia.
 

@@ -34,7 +34,17 @@
     byId("storage-time").textContent = r
       ? "Medido às " + clock(r.measured)
       : "";
-    if (data)
+    if (data) {
+      const admission = data.disk_admit ?? 15 * 1024 ** 3;
+      const margin = data.disk_free - admission;
+      const room = byId("disk-headroom");
+      room.textContent =
+        margin > 0
+          ? bytes(margin) + " de margem para novos testes"
+          : margin < 0
+            ? "Libere " + bytes(-margin) + " para admitir novos testes"
+            : "No limite de admissão de novos testes";
+      room.classList.toggle("low-space", margin <= 0);
       byId("disk-policy").textContent =
         bytes(data.disk_free) +
         " livres no Deck. Reserva de " +
@@ -42,6 +52,7 @@
         ". Novos testes exigem " +
         bytes(data.disk_admit ?? 15 * 1024 ** 3) +
         " livres.";
+    }
     if (r && dialog.dataset.rendered !== r.plan) {
       let start = 0;
       byId("storage-bar").innerHTML = groups
