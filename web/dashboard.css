@@ -455,6 +455,7 @@ footer,
   font-size: clamp(17px, 1.75vw, 26px);
   inline-size: 8ch;
 }
+#reader-resources,
 #reader-duration {
   font: 12px var(--mono);
   color: var(--muted);

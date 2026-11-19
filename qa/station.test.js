@@ -387,6 +387,8 @@ test(
                     ...j,
                     state: "passed",
                     finished: Date.now() / 1000,
+                    peak: 192 * 1048576,
+                    exit_code: 0,
                     meta: {
                       ...j.meta,
                       label: "Título extenso ".repeat(40),
@@ -423,6 +425,10 @@ test(
           .evaluate(
             (el) => el.scrollTop > 0 && el.scrollHeight > el.clientHeight,
           ),
+      );
+      assert.equal(
+        await page.locator("#reader-resources").innerText(),
+        "Pico de RAM 192 MiB · Código de saída 0",
       );
       const readsAtFinish = readCount;
       await refresh();
