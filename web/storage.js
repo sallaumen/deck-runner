@@ -42,7 +42,7 @@
         margin > 0
           ? bytes(margin) + " de margem para novos testes"
           : margin < 0
-            ? "Faltam " + bytes(-margin) + " para admitir novos testes"
+            ? "Libere " + bytes(-margin) + " para admitir novos testes"
             : "No limite de admissão de novos testes";
       room.classList.toggle("low-space", margin <= 0);
       byId("disk-policy").textContent =
