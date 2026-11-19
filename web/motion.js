@@ -113,6 +113,13 @@
   }
   reduced.addEventListener("change",resetEffects);
 
+  document.addEventListener("station-resync", resetEffects);
+  document.addEventListener("station-refresh", () => {
+    if (offline && scenes.size) resetEffects();
+  });
+  window.addEventListener("pagehide",resetEffects);
+  document.addEventListener("visibilitychange",()=>{ if(document.hidden) resetEffects(); });
+
   document.addEventListener("station-change", event => {
     if (document.hidden || !event.detail) return;
     const { jobs, previous } = event.detail;
