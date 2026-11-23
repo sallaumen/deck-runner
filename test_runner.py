@@ -230,6 +230,53 @@ class QueueTest(unittest.TestCase):
         with patch.object(server, "available_memory", return_value=1):
             self.assertIn("memória", server.gate())
 
+    def test_cpu_usage_compares_two_readings(self):
+        stat = Path(self.temp.name) / "stat"
+        stat.write_text("cpu  100 0 50 800 50 0 0 0 30 0\ncpu0 9 9 9 9 9 9 9 9 9 9\n")
+        # Idle and iowait are free time; guest time is already inside user.
+        self.assertEqual(server.cpu_ticks(stat), (150, 1000))
+        self.enterContext(patch.object(server, "_cpu", None))
+        pause = self.enterContext(patch.object(server.time, "sleep"))
+        clock = self.enterContext(patch.object(server.time, "monotonic", return_value=50))
+        with patch.object(
+            server, "cpu_ticks", side_effect=[(150, 1000), (450, 2000)]
+        ) as ticks:
+            self.assertEqual(server.cpu_usage(), 30)
+            pause.assert_called_once()
+            # Panels that ask again within a second share the same reading.
+            self.assertEqual(server.cpu_usage(), 30)
+            self.assertEqual(ticks.call_count, 2)
+        clock.return_value = 52
+        with patch.object(server, "cpu_ticks", return_value=(1450, 3000)):
+            self.assertEqual(server.cpu_usage(), 100)
+            self.assertEqual(server.status()["cpu_percent"], 100)
+        self.assertEqual(pause.call_count, 1)
+
+    def test_cpu_usage_is_unknown_without_proc_stat(self):
+        self.enterContext(patch.object(server, "_cpu", None))
+        with patch.object(server, "cpu_ticks", side_effect=FileNotFoundError):
+            self.assertIsNone(server.cpu_usage())
+            status = server.status()
+        self.assertIsNone(status["cpu_percent"])
+        self.assertEqual(status["cpu_count"], server.os.cpu_count())
+
+    def test_status_line_shows_cpu_beside_memory(self):
+        status = dict(
+            alive=True, slots=5, project_slots=3, paused=False, reason="", jobs=[],
+            available_memory=int(9.8 * server.GIB), disk_free=56 * server.GIB,
+        )
+        out = io.StringIO()
+        with contextlib.redirect_stdout(out):
+            client.print_status({**status, "cpu_percent": 37, "cpu_count": 8})
+            # A Deck that has not been updated yet reports no CPU reading.
+            client.print_status(status)
+        lines = out.getvalue().splitlines()
+        self.assertEqual(
+            lines[1],
+            "Memória disponível: 9.8 GiB | CPU em uso: 37% de 8 núcleos | disco livre: 56 GiB",
+        )
+        self.assertEqual(lines[3], "Memória disponível: 9.8 GiB | disco livre: 56 GiB")
+
     def test_unsafe_archive_is_rejected(self):
         server.setting("heartbeat", time.time())
         stream = io.BytesIO()

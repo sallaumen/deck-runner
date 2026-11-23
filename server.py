@@ -229,6 +229,38 @@ def available_memory():
     return 0
 
 
+_cpu = None  # busy ticks, total ticks, percentage and time of the last reading
+_cpu_lock = threading.Lock()
+
+
+def cpu_ticks(path="/proc/stat"):
+    with open(path) as source:
+        # Guest time is already inside user and nice.
+        ticks = [int(x) for x in source.readline().split()[1:9]]
+    return sum(ticks) - ticks[3] - ticks[4], sum(ticks)  # Idle and iowait are free.
+
+
+def cpu_usage():
+    """Busy share of all cores, in percent, between two readings of /proc/stat."""
+    global _cpu
+    try:
+        with _cpu_lock:
+            if _cpu is None:
+                # A one-shot `status` has no earlier reading to compare with.
+                _cpu = (*cpu_ticks(), None, float("-inf"))
+                time.sleep(0.25)
+            busy, total, percent, read = _cpu
+            # Panels polling together share one reading; shorter windows are noise.
+            if time.monotonic() - read >= 1:
+                now_busy, now_total = cpu_ticks()
+                if now_total > total:
+                    percent = round(100 * (now_busy - busy) / (now_total - total))
+                _cpu = (now_busy, now_total, percent, time.monotonic())
+            return percent
+    except (OSError, ValueError, IndexError):
+        return None  # No /proc/stat outside Linux.
+
+
 def gate():
     if setting("paused") == "1":
         return "Pausado: tarefas novas aguardam na fila."
@@ -315,6 +347,8 @@ def status():
         reason=reason,
         alive=time.time() - float(setting("heartbeat") or 0) < 15,
         available_memory=available_memory(),
+        cpu_percent=cpu_usage(),
+        cpu_count=os.cpu_count(),
         disk_free=shutil.disk_usage(ROOT).free,
         disk_reserve=storage.RESERVE,
         disk_admit=storage.ADMIT_AT,

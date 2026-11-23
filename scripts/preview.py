@@ -76,6 +76,8 @@ def sample(state):
         max_slots=MAX_SLOTS,
         project_slots=3,
         available_memory=int(7.4 * 1024**3),
+        cpu_percent=37,
+        cpu_count=8,
         disk_free=84 * 1024**3,
         disk_reserve=10 * 1024**3, disk_admit=15 * 1024**3,
         instance="preview",

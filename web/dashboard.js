@@ -550,6 +550,9 @@ function render() {
       })
       .join("") + bars(0, Math.max(0, data.slots - active.length)),
   );
+  // Older executors and the first reading after a start have no CPU figure.
+  byId("cpu").textContent =
+    data.cpu_percent == null ? "—" : data.cpu_percent + "%";
   byId("ram").textContent = gib(data.available_memory) + " GiB";
   byId("disk").textContent = gib(data.disk_free) + " GiB";
   updateHeadline(active, queued);
