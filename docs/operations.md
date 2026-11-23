@@ -76,7 +76,7 @@ Em **Testes no disco**, ao lado do disco livre, confira os blocos ocupados pelas
 |---|---|
 | Concorrência | De 1 a 32 no total. O limite por projeto pode ir até o total. Padrão inicial de 5 e 3. |
 | RAM | 1,25 / 2,5 / 5 GiB por tarefa. A reserva conjunta parte de 7,5 GiB e cresce com as vagas, limitada a 512 MiB abaixo do teto dos containers. O grupo pode usar até 80% da RAM física. A fila também desconta as reservas pendentes e preserva 1,5 GiB disponíveis para o sistema. |
-| CPU | Até 3 CPUs lógicas por tarefa e 5 para o conjunto |
+| CPU | Até 3 CPUs lógicas por tarefa e 5 para o conjunto. **CPU em uso**, no painel e em `deck-runner status`, é a parcela ocupada de todos os núcleos do Deck entre duas leituras, incluindo o que roda fora dos testes |
 | Disco | Reserva de 10 GiB. Abaixo de 15 GiB, novos envios são recusados e a fila aguarda espaço. A 12 GiB, envios e execuções em andamento são interrompidos para dar margem ao sistema |
 | Retenção | Worktrees por 24 horas, logs e referências das tarefas por 7 dias. O histórico de resultados continua em SQLite |
 

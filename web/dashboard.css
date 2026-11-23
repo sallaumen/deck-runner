@@ -1012,6 +1012,9 @@ footer {
     display: inline-block;
     min-inline-size: 7ch;
   }
+  .metrics #cpu {
+    min-inline-size: 4ch;
+  }
   .activity-y {
     font-size: 10px;
   }

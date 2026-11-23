@@ -33,6 +33,10 @@ test(
       await page.goto(url.href);
       await page.getByRole("heading", { name: "estudio / atlas" }).waitFor();
       assert.equal(await page.locator("#usage").innerText(), "2 / 5");
+      assert.match(
+        await page.locator(".metrics").innerText(),
+        /^CPU em uso\s+37%\s+RAM livre\s+7,4 GiB\s+Disco livre\s+84 GiB/,
+      );
       assert.equal(await page.locator("#history .history-row").count(), 4);
       const segment = page.locator("#trend a").first();
       await segment.click();
@@ -496,6 +500,8 @@ test(
         project_slots: 16,
         projects: names.map((name) => ({ name })),
         reason: "Aguardando memória para a próxima tarefa.",
+        // An executor from before the CPU reading omits the field.
+        cpu_percent: undefined,
         jobs: [
           ...manyJobs(32, "running", 300),
           ...manyJobs(76, "queued", 600),
@@ -521,6 +527,7 @@ test(
       for (const mode of ["?station=1&screen=1", "?station=1"]) {
         await page.goto(url.origin + "/" + mode);
         await page.locator("#usage").getByText("32 / 32").waitFor();
+        assert.equal(await page.locator("#cpu").innerText(), "—");
         for (const [w, h] of [
           [1280, 800],
           [1152, 720],

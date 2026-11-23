@@ -261,8 +261,11 @@ def print_status(s):
         + f" | {s['slots']} vagas, até {s['project_slots']} por projeto | "
         + ("PAUSADO" if s["paused"] else "fila ativa")
     )
+    cpu = s.get("cpu_percent")  # Absent while the Deck runs an older executor.
     print(
-        f"Memória disponível: {s['available_memory'] / 1024**3:.1f} GiB | disco livre: {s['disk_free'] / 1024**3:.0f} GiB"
+        f"Memória disponível: {s['available_memory'] / 1024**3:.1f} GiB | "
+        + (f"CPU em uso: {cpu}% de {s['cpu_count']} núcleos | " if cpu is not None else "")
+        + f"disco livre: {s['disk_free'] / 1024**3:.0f} GiB"
     )
     if s["reason"]:
         print(s["reason"])
