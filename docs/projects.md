@@ -32,4 +32,4 @@ Na aba **Na fila**, cada tarefa mostra quanto tempo já esperou. Ao passar o mou
 
 O snapshot contém o conteúdo atual dos arquivos versionados e arquivos novos não ignorados, com limite de 1 GiB. Exclusões entram na árvore. O bundle Git usa um commit sem ancestrais. Submódulos e links para fora do projeto exigem adaptação. Os filtros de arquivos sensíveis estão descritos em [SECURITY.md](../SECURITY.md).
 
-Para suítes maiores, passe `--size large` (2,5 GiB) ou `--size xl` (5 GiB). O padrão é 1,25 GiB. `--timeout` aceita entre 30 e 7.200 segundos, com padrão de 1.800. O scheduler prioriza o projeto elegível com menos vagas em uso e mantém a ordem de chegada em cada projeto.
+Para suítes maiores, passe `--size large` (2,5 GiB) ou `--size xl` (5 GiB). O padrão é 1,25 GiB. `--timeout` aceita entre 30 e 7.200 segundos, com padrão de 3.600 (uma hora). O scheduler prioriza o projeto elegível com menos vagas em uso e mantém a ordem de chegada em cada projeto.

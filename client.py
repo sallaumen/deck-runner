@@ -308,7 +308,7 @@ def main():
         "--agent", required=True, help="Agent and chat/task identity shown on dashboard"
     )
     submit.add_argument("--label", required=True)
-    submit.add_argument("--timeout", type=int, default=1800)
+    submit.add_argument("--timeout", type=int, default=3600)
     submit.add_argument("command", nargs=argparse.REMAINDER)
     for action in ("status", "pause", "resume"):
         p = sub.add_parser(action)
