@@ -40,6 +40,7 @@ from profiles import (
 )
 
 REPO_LOCK = threading.Lock()
+CACHE_LOCK = threading.Lock()
 ROOT = Path(
     os.environ.get("DECK_RUNNER_HOME", str(Path.home() / ".local/share/deck-runner"))
 )
@@ -212,6 +213,11 @@ def update(job, **values):
         )
 
 
+def worker_alive(c):
+    row = c.execute("SELECT value FROM settings WHERE key='heartbeat'").fetchone()
+    return row is not None and 0 <= time.time() - float(row[0]) < 15
+
+
 def jobrow(job):
     if not re.fullmatch("[a-f0-9]{12}", job):
         raise ValueError("Invalid task ID")
@@ -296,6 +302,7 @@ def status():
     with contextlib.closing(db()) as c:
         c.execute("BEGIN")
         slots, project_slots = slot_limits(c)
+        alive = worker_alive(c)
         registry = [
             dict(json.loads(row["config"]), color=row["color"])
             for row in registered_projects(c)
@@ -345,7 +352,7 @@ def status():
         jobs=jobs,
         paused=setting("paused") == "1",
         reason=reason,
-        alive=time.time() - float(setting("heartbeat") or 0) < 15,
+        alive=alive,
         available_memory=available_memory(),
         cpu_percent=cpu_usage(),
         cpu_count=os.cpu_count(),
@@ -392,8 +399,9 @@ def file_digest(path):
 
 
 def ingest(stream):
-    if time.time() - float(setting("heartbeat") or 0) > 20:
-        raise ValueError("Executor offline; no task submitted")
+    with contextlib.closing(db()) as c:
+        if not worker_alive(c):
+            raise ValueError("Executor offline; no task submitted")
     if shutil.disk_usage(ROOT).free < storage.ADMIT_AT:
         raise ValueError("Envio recusado. São necessários 15 GiB livres para preservar 10 GiB no Deck.")
     job = uuid.uuid4().hex[:12]
@@ -431,6 +439,8 @@ def ingest(stream):
         meta["bundle_sha256"] = file_digest(folder / "snapshot.bundle")
         with contextlib.closing(db()) as c, c:
             c.execute("BEGIN IMMEDIATE")
+            if not worker_alive(c):
+                raise ValueError("Executor offline; no task submitted")
             validate_meta(meta)
             if shutil.disk_usage(ROOT).free < storage.ADMIT_AT:
                 raise ValueError("Disco abaixo de 15 GiB livres. Teste não enviado.")
@@ -656,12 +666,13 @@ def execute(job):
                 / (f"{project['name']}-{image_id[:12]}-{lock}-{meta['lane']}")
             )
             mounts = []
-            for name in ("deps", "_build") if profile == "mix" else ():
-                (cache / name).mkdir(parents=True, exist_ok=True)
-                (work / name).mkdir(exist_ok=True)
-                mounts += ["-v", f"{cache / name}:{work / name}:rw"]
-            if cache.exists():
-                os.utime(cache, None)
+            if profile == "mix":
+                with CACHE_LOCK:
+                    for name in ("deps", "_build"):
+                        (cache / name).mkdir(parents=True, exist_ok=True)
+                        (work / name).mkdir(exist_ok=True)
+                        mounts += ["-v", f"{cache / name}:{work / name}:rw"]
+                    os.utime(cache, None)
             budget = str(meta.get("budget_mib", DEFAULT_MIB)) + "m"
             argv = [
                 "podman",
@@ -809,28 +820,35 @@ def cleanup():
                 stderr=subprocess.DEVNULL,
             )
     for cache in (ROOT / "cache").glob("*") if (ROOT / "cache").exists() else []:
-        if time.time() - cache.stat().st_mtime > 7 * 86400:
-            shutil.rmtree(cache)
+        with CACHE_LOCK:
+            if time.time() - cache.stat().st_mtime > 7 * 86400:
+                shutil.rmtree(cache)
 
 
 def worker():
-    last_cleanup = 0
     while True:
         try:
-            if time.monotonic() - last_cleanup > 3600:
-                cleanup()
-                last_cleanup = time.monotonic()
             if not gate() and (job := claim()):
-                threading.Thread(target=execute, args=(job,), daemon=True).start()
+                try:
+                    threading.Thread(target=execute, args=(job,), daemon=True).start()
+                except RuntimeError as exc:
+                    # The claim is durable, even if no execution thread could start.
+                    update(job, state="failed", finished=time.time(), error=str(exc))
+                    raise
+            # A paused or full queue still completes a scheduling cycle.
+            setting("heartbeat", time.time())
         except Exception:
             traceback.print_exc()
         time.sleep(2)
 
 
-def heartbeat():
+def maintenance():
     while True:
-        setting("heartbeat", time.time())
-        time.sleep(3)
+        try:
+            cleanup()
+        except Exception:
+            traceback.print_exc()
+        time.sleep(3600)
 
 
 def remote_play_ready(proc=Path("/proc"), pid_file=Path.home() / ".steam/steam.pid"):
@@ -1021,6 +1039,7 @@ class LegacyRedirect(http.server.BaseHTTPRequestHandler):
 def serve():
     with (ROOT / "worker.lock").open("w") as lock:
         fcntl.flock(lock, fcntl.LOCK_EX | fcntl.LOCK_NB)
+        setting("heartbeat", 0)
         with contextlib.closing(db()) as c:
             rows = c.execute("SELECT id FROM jobs WHERE state='running'").fetchall()
         for row in rows:
@@ -1047,7 +1066,7 @@ def serve():
         httpd.inventory = storage.Inventory(ROOT, db)
         httpd.changes = live.Changes()
         threading.Thread(target=httpd.changes.observe, args=(db,), daemon=True).start()
-        threading.Thread(target=heartbeat, daemon=True).start()
+        threading.Thread(target=maintenance, daemon=True).start()
         threading.Thread(target=worker, daemon=True).start()
         httpd.serve_forever()
 

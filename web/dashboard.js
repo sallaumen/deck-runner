@@ -261,9 +261,11 @@ function updateHeadline(active, queued) {
         ? "Executor sem resposta"
         : data.paused
           ? "Fila pausada"
-          : queued.length
-            ? "Aguardando vaga"
-            : "Pronto para testar";
+          : data.disk_free < data.disk_admit
+            ? "Envios bloqueados"
+            : queued.length || data.reason
+              ? "Aguardando vaga"
+              : "Pronto para testar";
   }
   context.hidden = !busy;
 }
@@ -783,10 +785,11 @@ async function refresh() {
       document.dispatchEvent(new Event("station-resync"));
     signalChanges(previous?.instance === data.instance ? previous : null);
     resync = document.hidden;
-    byId("connection").textContent = data.alive
-      ? "Conectado"
-      : "Executor sem resposta";
-    byId("connection").classList.toggle("online", data.alive);
+    const diskBlocked = data.disk_free < data.disk_admit;
+    byId("connection").textContent = !data.alive
+      ? "Executor sem resposta"
+      : diskBlocked ? "Envios bloqueados" : "Executor ativo";
+    byId("connection").classList.toggle("online", data.alive && !diskBlocked);
   } catch {
     sampleTime = stationTime();
     advancing = false;
