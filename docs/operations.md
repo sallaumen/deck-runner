@@ -13,13 +13,26 @@ O painel e a fila atendem somente em loopback. No Mac, abra **Testes no Deck**. 
 
 ## Diagnóstico em ordem
 
-1. No Mac, execute `deck-runner doctor`. Ele verifica o SSH, a pulsação do executor e se o identificador da estação obtido pela porta local corresponde ao mesmo Deck.
+1. Na sessão da frente afetada, execute `~/.local/bin/deck-runner doctor --repo .` dentro do worktree. Ele consulta o executor por SSH, verifica o cadastro Git e testa o painel local de forma independente. A identidade da estação precisa coincidir nas duas consultas. Sem `--repo`, o diagnóstico verifica a conexão mesmo se o disco bloquear envios.
 2. Se o SSH falhar, confirme que o Deck está acordado, na mesma rede e com `sshd` ativo. Teste `ssh -o BatchMode=yes deck@steamdeck.local true`. Se você trocou de rede ou de roteador, reveja a resolução do nome local. Se o SSH avisar que a identidade do host mudou, confira a chave no próprio Deck antes de confiar na nova identidade.
 3. Se o executor falhar, use no Deck `journalctl --user -u deck-runner.service -n 60`. Se o painel não abrir no Plasma, confirme `flatpak info com.google.Chrome` e rode `systemctl --user restart deck-runner-display.service`. A janela usa um perfil separado do navegador. O supervisor acompanha o processo real desse perfil, inclusive quando o Flatpak o inicia fora do serviço. A janela abre ao entrar no Desktop. Para sair, toque em **Fechar painel** ou pressione **B** e confirme com **A**. O executor continua atendendo os agentes. O atalho **Deck Runner** abre o painel de novo. Se o Chrome pedir atualização ao iniciar, atualize o Flatpak pelo Discover e reinicie apenas o serviço da janela.
 4. Se apenas o túnel falhar, consulte `~/Library/Logs/deck-runner/tunnel.log` e `lsof -nP -iTCP:4040 -sTCP:LISTEN` no Mac. Para refazer a conexão, use `launchctl kickstart -k "gui/$(id -u)/io.github.deck-runner.tunnel"`. Em uma rede conhecida, o LaunchAgent volta a tentar sozinho. Ele acompanha a sessão do usuário no Mac.
 5. Se um teste aguarda, leia o motivo no painel. Se encontrar uma falha, abra o log e confirme a árvore de origem com `deck-runner job ID` antes de repetir.
 
 O arquivo `~/.config/deck-runner/host` no Mac guarda o destino. O cliente também aceita `DECK_RUNNER_HOST` para uma conexão avulsa. Para mudar a conexão persistente, rode o instalador do Mac novamente.
+
+### O painel está ativo e uma frente falha ao enviar
+
+**Executor ativo** indica que o Deck concluiu um ciclo de verificação da fila nos últimos 15 segundos. A tela local do Deck consegue receber essa informação mesmo com o Mac desconectado. Uma fila pausada ou aguardando memória aceita tarefas para executar depois. Com menos de 15 GiB livres, novos envios são recusados.
+
+| Resultado na frente | Próxima verificação |
+|---|---|
+| SSH informa `Operation not permitted` ao abrir o socket | Compare o mesmo comando no Terminal do Mac. Se só a frente falha, confira se o ambiente dela tem acesso autorizado ao SSH do Deck. Uma sessão em outra máquina precisa de sua própria conexão e de um projeto cadastrado. |
+| SSH responde e o painel local falha | `submit`, `job`, `wait` e `logs` usam SSH. Consulte o LaunchAgent e a porta 4040 para recuperar o painel. |
+| Painel responde e SSH falha | A frente precisa conseguir abrir uma sessão SSH para enviar o snapshot. Confira o destino informado por `doctor` e o erro do SSH nessa sessão. |
+| O cadastro do worktree falha | Confira `git rev-parse --path-format=absolute --git-common-dir` e o cadastro em `deck-runner projects`. Worktrees ligados compartilham a identidade da pasta principal. |
+
+Para confirmar uma execução de ponta a ponta, envie um teste pequeno e conhecido do próprio projeto com `deck-runner submit`. Guarde o ID e acompanhe com `deck-runner wait ID`. O ID confirma o recebimento do snapshot. O estado final, o código de saída e o log mostram o que aconteceu durante a execução.
 
 ## Usar o Deck sem teclado
 

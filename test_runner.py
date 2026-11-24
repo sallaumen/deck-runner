@@ -289,6 +289,62 @@ class QueueTest(unittest.TestCase):
             server.ingest(stream)
         self.assertEqual(list((server.ROOT / "jobs").iterdir()), [])
 
+    def test_only_completed_scheduler_cycles_refresh_liveness(self):
+        server.setting("heartbeat", time.time() - 60)
+        with (
+            patch.object(server, "claim", side_effect=RuntimeError("claim failed")),
+            patch.object(server.traceback, "print_exc") as logged,
+            patch.object(server.time, "sleep", side_effect=KeyboardInterrupt),
+        ):
+            with self.assertRaises(KeyboardInterrupt):
+                server.worker()
+            logged.assert_called_once()
+        self.assertFalse(server.status()["alive"])
+        with self.assertRaisesRegex(ValueError, "offline"):
+            server.ingest(io.BytesIO())
+        server.setting("paused", "1")
+        with patch.object(server.time, "sleep", side_effect=KeyboardInterrupt):
+            with self.assertRaises(KeyboardInterrupt):
+                server.worker()
+        self.assertTrue(server.status()["alive"])
+        server.setting("heartbeat", time.time() + 3600)
+        self.assertFalse(server.status()["alive"])
+
+    def test_worker_stalling_during_upload_leaves_no_job_or_snapshot(self):
+        server.setting("heartbeat", time.time())
+        stream = io.BytesIO()
+        meta = dict(project="catalogue", owner="agent", label="fixture", command=["mix", "test"],
+                    timeout=60, source_commit="a"*40, snapshot_commit="b"*40, tree="c"*40)
+        with tarfile.open(fileobj=stream, mode="w") as archive:
+            for name, value in (("meta.json", json.dumps(meta).encode()), ("snapshot.bundle", b"data")):
+                info = tarfile.TarInfo(name)
+                info.size = len(value)
+                archive.addfile(info, io.BytesIO(value))
+        stream.seek(0)
+        def finish_upload(_):
+            server.setting("heartbeat", time.time() - 60)
+            return "digest"
+        with patch.object(server, "file_digest", side_effect=finish_upload):
+            with self.assertRaisesRegex(ValueError, "offline"):
+                server.ingest(stream)
+        self.assertEqual(server.status()["jobs"], [])
+        self.assertEqual(list((server.ROOT / "jobs").iterdir()), [])
+
+    def test_failed_thread_start_releases_the_claimed_slot(self):
+        self.add("a" * 12, 1)
+        self.add("b" * 12, 2)
+        with (
+            patch.object(server.threading.Thread, "start", side_effect=RuntimeError("thread limit")),
+            patch.object(server.traceback, "print_exc"),
+            patch.object(server.time, "sleep", side_effect=KeyboardInterrupt),
+        ):
+            with self.assertRaises(KeyboardInterrupt):
+                server.worker()
+        job = server.jobrow("a" * 12)
+        self.assertEqual((job["state"], job["error"]), ("failed", "thread limit"))
+        self.assertIsNotNone(job["finished"])
+        self.assertEqual(server.claim(), "b" * 12)
+
     def test_metadata_rejects_unprepared_project_and_shell(self):
         m = dict(
             project="catalogue",
@@ -305,6 +361,43 @@ class QueueTest(unittest.TestCase):
             server.validate_meta({**m, "project": "other"})
         with self.assertRaises(ValueError):
             server.validate_meta({**m, "command": ["sh", "-c", "anything"]})
+
+
+class ClientReadinessTest(unittest.TestCase):
+    def setUp(self):
+        self.remote = dict(instance="deck", alive=True, disk_free=20, disk_admit=15,
+                           reason="", projects=[dict(name="catalogue", common="/repo/.git")])
+        self.call = self.enterContext(patch.object(client, "call", return_value=self.remote))
+        self.panel = self.enterContext(patch.object(client.urllib.request, "urlopen",
+            side_effect=lambda *a, **kw: io.BytesIO(json.dumps(self.remote).encode())))
+        self.out = self.enterContext(contextlib.redirect_stdout(io.StringIO()))
+
+    def test_front_denied_ssh_with_working_panel(self):
+        self.call.side_effect = RuntimeError("Operation not permitted")
+        with self.assertRaisesRegex(RuntimeError, "SSH.*Operation not permitted"):
+            client.doctor(None)
+        self.assertIn("Painel local respondeu", self.out.getvalue())
+
+    def test_ssh_healthy_with_panel_denied_or_pointing_elsewhere(self):
+        self.panel.side_effect = PermissionError("Operation not permitted")
+        with self.assertRaisesRegex(RuntimeError, "Painel local.*Operation not permitted"):
+            client.doctor(None)
+        self.assertIn("Executor ativo", self.out.getvalue())
+        self.panel.side_effect = lambda *a, **kw: io.BytesIO(b'{"instance":"other"}')
+        with self.assertRaisesRegex(RuntimeError, "outra estação"):
+            client.doctor(None)
+
+    def test_registered_worktree_and_disk_admission(self):
+        common = self.enterContext(patch.object(client.catalog, "common_dir", return_value=Path("/repo/.git")))
+        self.assertEqual(client.doctor("."), 0)
+        self.remote["disk_free"] = 14
+        with self.assertRaisesRegex(RuntimeError, "limite de disco"):
+            client.doctor(".")
+        self.assertEqual(client.doctor(None), 0)
+        del self.remote["disk_admit"]
+        common.return_value = Path("/other/.git")
+        with self.assertRaisesRegex(RuntimeError, "not registered"):
+            client.doctor(".")
 
 
 class SnapshotTest(unittest.TestCase):

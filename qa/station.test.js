@@ -32,6 +32,7 @@ test(
       page.on("pageerror", (error) => errors.push(error.message));
       await page.goto(url.href);
       await page.getByRole("heading", { name: "estudio / atlas" }).waitFor();
+      assert.equal(await page.locator("#connection").innerText(), "Executor ativo");
       assert.equal(await page.locator("#usage").innerText(), "2 / 5");
       assert.match(
         await page.locator(".metrics").innerText(),
@@ -252,7 +253,8 @@ test(
         if (mode === "offline") return route.abort();
         const jobs = sample.jobs.filter((j) => j.state !== "running");
         return route.fulfill({
-          json: { ...sample, jobs, paused: mode === "paused" },
+          json: { ...sample, jobs, paused: mode === "paused", alive: mode !== "stalled",
+            disk_free: mode === "low-disk" ? 1 : sample.disk_free },
         });
       });
       await page
@@ -266,6 +268,14 @@ test(
       await page
         .getByRole("heading", { name: "Fila pausada" })
         .waitFor({ timeout: 12000 });
+      for (const [fixture, label] of [["low-disk", "Envios bloqueados"], ["stalled", "Executor sem resposta"]]) {
+        mode = fixture;
+        await page.evaluate(() => refresh());
+        await page.getByRole("heading", { name: label }).waitFor();
+        assert.equal(await page.locator("#connection").innerText(), label);
+        assert.equal(await page.locator("#connection").evaluate(el => el.classList.contains("online")), false);
+      }
+      mode = "paused";
       assert.equal(await page.locator("#leave").isVisible(), false);
       await page.goto(url.origin + "/?screen=1&station=1");
       await page.setViewportSize({ width: 1280, height: 800 });

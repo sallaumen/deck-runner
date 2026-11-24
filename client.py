@@ -37,14 +37,25 @@ EXCLUDE = {".cyclops", ".idea", ".playwright-mcp", ".DS_Store"}
 
 def call(action, job=None, stdin=None, raw=False):
     command = shlex.join(["python3", REMOTE, action] + ([job] if job else []))
-    p = subprocess.run(
-        SSH + [command], stdin=stdin, stdout=subprocess.PIPE, stderr=subprocess.PIPE
-    )
-    if p.returncode:
-        raise RuntimeError(
-            p.stderr.decode(errors="replace").strip()
-            or "Deck unavailable; no local tests were started"
+    try:
+        p = subprocess.run(
+            SSH + [command], stdin=stdin, stdout=subprocess.PIPE, stderr=subprocess.PIPE,
+            timeout=45 if action in ("status", "job") else None,
         )
+    except subprocess.TimeoutExpired as exc:
+        raise RuntimeError(f"Tempo esgotado consultando {action} via SSH em {HOST}.") from exc
+    if p.returncode:
+        detail = p.stderr.decode(errors="replace").strip() or f"SSH exit {p.returncode}"
+        if p.returncode == 255 and any(
+            "Operation not permitted" in line
+            and ("Control socket connect(" in line or "connect to host " in line)
+            for line in detail.splitlines()
+        ):
+            detail += (
+                "\nO sistema negou acesso ao socket SSH nesta sessão. Compare "
+                "`~/.local/bin/deck-runner doctor` no Terminal do Mac e na frente afetada."
+            )
+        raise RuntimeError(detail)
     return p.stdout if raw else json.loads(p.stdout)
 
 
@@ -276,6 +287,64 @@ def print_status(s):
         )
 
 
+def doctor(repo):
+    url = f"http://127.0.0.1:{settings.PORT}/api/status"
+    remote = None
+    errors = []
+    try:
+        remote = call("status")
+        print(f"SSH → {HOST} · respondeu")
+    except (OSError, ValueError, RuntimeError, subprocess.SubprocessError) as exc:
+        errors.append(f"Consulta da frente via SSH ({HOST}): {exc}")
+    else:
+        if not remote["alive"]:
+            errors.append("Executor sem resposta. Confira deck-runner.service no Deck.")
+        else:
+            print("Executor ativo." + (" " + remote["reason"] if remote.get("reason") else ""))
+        if uploads_blocked(remote):
+            message = "Envio bloqueado pelo limite de disco no Deck."
+            if repo is None:
+                print(message)
+            else:
+                errors.append(message)
+        if repo is not None:
+            try:
+                project = registered_project(remote, repo)
+                print(f"Worktree cadastrado · {project['name']}")
+            except (OSError, ValueError, subprocess.SubprocessError) as exc:
+                errors.append(f"Cadastro do worktree ({repo}): {exc}")
+
+    try:
+        with urllib.request.urlopen(url, timeout=5) as reply:
+            local = json.load(reply)
+        if not isinstance(local, dict) or not local.get("instance"):
+            errors.append(f"Painel local respondeu sem identificar a estação ({url}).")
+        elif remote is None:
+            print("Painel local respondeu. O acesso SSH desta frente precisa de verificação.")
+        elif local["instance"] != remote.get("instance"):
+            errors.append("A porta local pertence a outra estação. Confira o túnel.")
+        else:
+            print(f"Painel no mesmo Deck · {len(remote['projects'])} projetos · {url.removesuffix('api/status')}")
+    except (OSError, ValueError) as exc:
+        errors.append(f"Painel local ({url}): {exc}")
+    if errors:
+        raise RuntimeError("\n".join(errors))
+    return 0
+
+
+def uploads_blocked(state):
+    # Older stations may omit the disk admission threshold.
+    return "disk_admit" in state and state["disk_free"] < state["disk_admit"]
+
+
+def registered_project(state, repo):
+    common = catalog.common_dir(Path(repo).expanduser())
+    for project in state["projects"]:
+        if project["common"] == str(common):
+            return project
+    raise ValueError(f"Project not registered: {common}. Use deck-runner add PATH.")
+
+
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     sub = parser.add_subparsers(dest="action", required=True)
@@ -323,9 +392,10 @@ def main():
             p.add_argument("--tail", type=int, default=100)
         if action == "wait":
             p.add_argument("--poll", type=int, default=5)
-    sub.add_parser(
+    diag = sub.add_parser(
         "doctor", help="Check SSH, the executor and the local dashboard tunnel"
     )
+    diag.add_argument("--repo", help="Also verify registration of the submitting worktree")
     sub.add_parser("video-status", help="Check Steam Link video and automatic reconnection on this Mac")
     sub.add_parser("open")
     args = parser.parse_args()
@@ -366,28 +436,7 @@ def main():
 
         return diagnose()
     if args.action == "doctor":
-        print(f"SSH → {HOST}", flush=True)
-        remote = call("status")
-        if not remote["alive"]:
-            raise RuntimeError("SSH conectado. Verifique deck-runner.service no Deck.")
-        print("Executor ativo.", flush=True)
-        try:
-            with urllib.request.urlopen(
-                f"http://127.0.0.1:{settings.PORT}/api/status", timeout=5
-            ) as res:
-                local = json.load(res)
-        except (OSError, ValueError) as exc:
-            raise RuntimeError(
-                "Executor ativo, mas o túnel local não respondeu. Rode o instalador do Mac novamente."
-            ) from exc
-        if not local.get("instance") or local["instance"] != remote.get("instance"):
-            raise RuntimeError(
-                "A porta local pertence a outro serviço. Confira o túnel."
-            )
-        print(
-            f"Painel conectado ao mesmo Deck · {len(local['projects'])} projetos · http://127.0.0.1:{settings.PORT}/"
-        )
-        return 0
+        return doctor(args.repo)
     if args.action == "open":
         subprocess.run(["open", f"http://127.0.0.1:{settings.PORT}/"], check=True)
         return
@@ -398,10 +447,9 @@ def main():
         command = args.command
         if command[:1] == ["--"]:
             command = command[1:]
-        identity = str(catalog.common_dir(Path(args.repo).expanduser()))
-        project = next((p for p in state["projects"] if p["common"] == identity), None)
-        if not project:
-            raise ValueError("Project not registered. Use deck-runner add PATH.")
+        if uploads_blocked(state):
+            raise RuntimeError("Envio bloqueado pelo limite de disco no Deck.")
+        project = registered_project(state, args.repo)
         command = command or project.get("test") or COMMANDS[project["profile"]]
         check_command(project["profile"], command, project.get("test"))
         budget = {"normal": DEFAULT_MIB, "large": 2560, "xl": 5120}[args.size]
