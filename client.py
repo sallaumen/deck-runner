@@ -52,8 +52,9 @@ def call(action, job=None, stdin=None, raw=False):
             for line in detail.splitlines()
         ):
             detail += (
-                "\nO sistema negou acesso ao socket SSH nesta sessão. Compare "
-                "`~/.local/bin/deck-runner doctor` no Terminal do Mac e na frente afetada."
+                "\nO sistema negou acesso ao socket SSH nesta sessão. "
+                "Em sessões com um Mac pareado, execute o doctor --repo e o teste nesse Mac. "
+                f"Consulte {Path(__file__).resolve().with_name('README.md')}."
             )
         raise RuntimeError(detail)
     return p.stdout if raw else json.loads(p.stdout)
@@ -291,6 +292,8 @@ def doctor(repo):
     url = f"http://127.0.0.1:{settings.PORT}/api/status"
     remote = None
     errors = []
+    if repo is None:
+        print("Diagnóstico da estação. Nenhum worktree selecionado.")
     try:
         remote = call("status")
         print(f"SSH → {HOST} · respondeu")
@@ -338,11 +341,30 @@ def uploads_blocked(state):
 
 
 def registered_project(state, repo):
-    common = catalog.common_dir(Path(repo).expanduser())
+    repo = Path(repo).expanduser()
+    common = catalog.common_dir(repo)
     for project in state["projects"]:
         if project["common"] == str(common):
             return project
-    raise ValueError(f"Project not registered: {common}. Use deck-runner add PATH.")
+
+    # Agents also use standalone clones made directly from the primary checkout.
+    # Only compare local paths. A lookup must never contact a Git remote.
+    origin = subprocess.run(
+        ["git", "-C", str(repo), "config", "--get", "remote.origin.url"],
+        capture_output=True, text=True, check=False,
+    )
+    path = Path(origin.stdout.rstrip("\n"))
+    if origin.returncode == 0 and path.is_absolute():
+        source = path.resolve()
+        for project in state["projects"]:
+            registered = Path(project["common"])
+            if source in (registered, registered.parent):
+                return project
+    raise ValueError(
+        f"Project not registered: {common}. Use um worktree do projeto cadastrado "
+        "ou um clone feito diretamente da pasta principal. Para um novo projeto, "
+        "use deck-runner add na pasta principal em ~/projects."
+    )
 
 
 def main():
@@ -395,7 +417,9 @@ def main():
     diag = sub.add_parser(
         "doctor", help="Check SSH, the executor and the local dashboard tunnel"
     )
-    diag.add_argument("--repo", help="Also verify registration of the submitting worktree")
+    scope = diag.add_mutually_exclusive_group()
+    scope.add_argument("--repo", help="Verify this worktree (defaults to the current Git checkout)")
+    scope.add_argument("--station", action="store_true", help="Check only the station and local tunnel")
     sub.add_parser("video-status", help="Check Steam Link video and automatic reconnection on this Mac")
     sub.add_parser("open")
     args = parser.parse_args()
@@ -436,7 +460,13 @@ def main():
 
         return diagnose()
     if args.action == "doctor":
-        return doctor(args.repo)
+        repo = args.repo
+        if repo is None and not args.station:
+            try:
+                repo = os.fsdecode(git(".", "rev-parse", "--show-toplevel")).rstrip("\n")
+            except subprocess.CalledProcessError:
+                pass  # Outside a checkout, only station checks apply.
+        return doctor(repo)
     if args.action == "open":
         subprocess.run(["open", f"http://127.0.0.1:{settings.PORT}/"], check=True)
         return

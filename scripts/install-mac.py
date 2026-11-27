@@ -142,7 +142,7 @@ def install(host, legacy):
     link = desktop / app.name
     if not link.exists() and not link.is_symlink():
         link.symlink_to(app, target_is_directory=True)
-    subprocess.run([str(cli), "doctor"], check=True)
+    subprocess.run([str(cli), "doctor", "--station"], check=True)
 
 
 if __name__ == "__main__":
