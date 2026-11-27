@@ -11,6 +11,7 @@ import unittest
 from unittest.mock import patch
 
 import activity
+import catalog
 import client
 import server
 
@@ -398,6 +399,59 @@ class ClientReadinessTest(unittest.TestCase):
         common.return_value = Path("/other/.git")
         with self.assertRaisesRegex(RuntimeError, "not registered"):
             client.doctor(".")
+
+
+class LocalCloneRegistrationTest(unittest.TestCase):
+    def setUp(self):
+        area = tempfile.TemporaryDirectory()
+        self.addCleanup(area.cleanup)
+        self.root = Path(area.name)
+        self.primary = self.root / "primary"
+        self.clone = self.root / "agent"
+        subprocess.run(["git", "init", "-q", self.primary], check=True)
+        client.git(self.primary, "-c", "user.name=Tester", "-c", "user.email=test@localhost",
+                   "-c", "commit.gpgsign=false", "commit", "--allow-empty", "-qm", "base")
+        subprocess.run(["git", "clone", "-q", self.primary, self.clone], check=True)
+        self.project = dict(name="primary", common=str(catalog.common_dir(self.primary)))
+        self.state = dict(projects=[self.project])
+
+    def test_doctor_defaults_to_current_checkout_and_supports_station_only(self):
+        with patch.object(client, "doctor") as doctor:
+            for cwd, flags, expected in (
+                (self.clone, ["--repo", str(self.primary)], str(self.primary)),
+                (self.clone, [], str(self.clone.resolve())),
+                (self.clone, ["--station"], None),
+                (self.root, [], None),
+            ):
+                with (
+                    self.subTest(cwd=cwd, flags=flags),
+                    contextlib.chdir(cwd),
+                    patch.object(client.sys, "argv", ["deck-runner", "doctor", *flags]),
+                ):
+                    client.main()
+                    doctor.assert_called_with(expected)
+
+    def test_clone_and_its_worktree_share_primary_queue(self):
+        linked = self.root / "agent-worktree"
+        client.git(self.clone, "worktree", "add", "--detach", "-q", str(linked))
+        for repo in (self.clone, linked):
+            self.assertEqual(client.registered_project(self.state, repo), self.project)
+        own = dict(name="independent", common=str(catalog.common_dir(self.clone)))
+        self.state["projects"].append(own)
+        self.assertEqual(client.registered_project(self.state, linked), own)
+
+    def test_only_exact_local_origin_matches(self):
+        for url in (str(self.primary / ".git"), str(self.primary)):
+            client.git(self.clone, "remote", "set-url", "origin", url)
+            self.assertEqual(client.registered_project(self.state, self.clone), self.project)
+        for url in (str(self.root / "other" / "primary"), str(self.primary / "subdir"),
+                    "https://example.invalid/primary.git", "../primary"):
+            client.git(self.clone, "remote", "set-url", "origin", url)
+            with self.subTest(url=url), self.assertRaisesRegex(ValueError, "not registered"):
+                client.registered_project(self.state, self.clone)
+        client.git(self.clone, "remote", "remove", "origin")
+        with self.assertRaisesRegex(ValueError, "not registered"):
+            client.registered_project(self.state, self.clone)
 
 
 class SnapshotTest(unittest.TestCase):

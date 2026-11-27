@@ -6,6 +6,14 @@ Transforme um Steam Deck em uma bancada de testes para os projetos do seu Mac. U
 
 *Prévia com projetos fictícios. O painel instalado mostra a fila real.*
 
+## Validação por sessão e por worktree
+
+No agente que fará a validação, rode `~/.local/bin/deck-runner doctor --repo /caminho/da/frente`. O diagnóstico verifica o acesso SSH daquela sessão e o cadastro daquela cópia. O teste termina quando `wait ID` retorna o resultado e `logs ID` mostra o que rodou.
+
+Em sessões com **Remote Desktop Commander** e um Mac pareado, selecione o Mac online em `list_devices`. Use `start_process` nesse dispositivo com o caminho absoluto da cópia que contém as mudanças. Confira `git rev-parse HEAD` e `git status --short` nessa pasta. Para testes Linux, execute o cliente instalado no Mac e passe a mesma pasta em `submit --repo`. Se a ferramenta devolver um **PID**, acompanhe com `read_process_output` até receber o **ID da tarefa do Deck**. Para validar uma tela Phoenix, rode o servidor e o navegador no Mac, com porta e banco de teste próprios, e abra a rota alterada.
+
+Um erro de socket como `EPERM` descreve o ambiente que tentou abrir a conexão. Em equipes com vários agentes, a sessão com acesso autorizado ao Mac pode validar o trabalho das demais quando tem acesso às mesmas mudanças. Registre a árvore enviada e o resultado, ou a rota e o tamanho da tela que o navegador abriu.
+
 ## Experimente em um minuto
 
 Com Git e Python 3.11 ou superior, a prévia funciona sem hardware adicional. Os controles da prévia são somente para leitura.

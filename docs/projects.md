@@ -19,7 +19,9 @@ deck-runner add ~/projects/analise --profile custom --image localhost/analise:te
 
 Use o usuário e a porta configurados no ambiente de testes do projeto. A senha do PostgreSQL descartável é igual ao nome do usuário. Cada container recebe um PostgreSQL próprio. O perfil Mix define `MIX_TEST_PARTITION` por tarefa. Use `--no-test-partition` quando a suíte depende do nome padrão do banco. Uma imagem Mix alternativa precisa fornecer o mesmo ambiente de inicialização da imagem base.
 
-Com o projeto ocioso, repita `add` com a configuração completa e `--update` para alterá-la. `remove NOME` arquiva o cadastro e conserva o histórico. O comando `projects` descobre repositórios no primeiro nível de `~/projects`; `add` também aceita repositórios em subpastas. Clones independentes têm identidades distintas.
+Com o projeto ocioso, repita `add` com a configuração completa e `--update` para alterá-la. `remove NOME` arquiva o cadastro e conserva o histórico. O comando `projects` descobre repositórios no primeiro nível de `~/projects`. O comando `add` também aceita repositórios em subpastas.
+
+Worktrees vinculados e clones cujo `origin` é o caminho absoluto da pasta principal cadastrada (ou do seu `.git`) compartilham o cadastro e a fila. Por exemplo, `git clone ~/projects/catalogo /tmp/revisao` permite enviar `submit --repo /tmp/revisao`, incluindo as edições dessa cópia. Um cadastro próprio da cópia tem prioridade. Clones feitos de uma URL de rede continuam exigindo seu próprio cadastro ou um worktree do projeto já cadastrado.
 
 ## Contrato de execução
 

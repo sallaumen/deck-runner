@@ -7,13 +7,13 @@
 | Acesso SSH ao Deck | systemd do sistema | `systemctl is-enabled sshd` |
 | Executor desde o boot | systemd do usuário e linger | `systemctl --user is-enabled deck-runner` e `loginctl show-user "$USER" -p Linger` |
 | Janela ao entrar no Plasma | Autostart do KDE e `deck-runner-display.service` | `systemctl --user status deck-runner-display` |
-| Túnel ao entrar no Mac | LaunchAgent `io.github.deck-runner.tunnel` | `~/.local/bin/deck-runner doctor` |
+| Túnel ao entrar no Mac | LaunchAgent `io.github.deck-runner.tunnel` | `~/.local/bin/deck-runner doctor --station` |
 
 O painel e a fila atendem somente em loopback. No Mac, abra **Testes no Deck**. O modo **Tela do Deck** privilegia execução, ocupação e resultado por projeto. **Abrir controles** permite filtrar, pausar novas admissões, consultar logs e cancelar uma tarefa. A sequência recente resume até 12 resultados dos projetos ativos. Toque em uma marca ou selecione-a pelo controle para abrir o log daquela execução. Um estado offline conserva a última leitura e informa quando o painel está tentando reconectar.
 
 ## Diagnóstico em ordem
 
-1. Na sessão da frente afetada, execute `~/.local/bin/deck-runner doctor --repo .` dentro do worktree. Ele consulta o executor por SSH, verifica o cadastro Git e testa o painel local de forma independente. A identidade da estação precisa coincidir nas duas consultas. Sem `--repo`, o diagnóstico verifica a conexão mesmo se o disco bloquear envios.
+1. Na sessão da frente afetada, execute `~/.local/bin/deck-runner doctor --repo .` dentro do worktree. Ele consulta o executor por SSH, verifica o cadastro Git e testa o painel local de forma independente. A identidade da estação precisa coincidir nas duas consultas. Dentro de um repositório, `doctor` seleciona o worktree atual. Use `--station` para verificar somente a estação e o túnel.
 2. Se o SSH falhar, confirme que o Deck está acordado, na mesma rede e com `sshd` ativo. Teste `ssh -o BatchMode=yes deck@steamdeck.local true`. Se você trocou de rede ou de roteador, reveja a resolução do nome local. Se o SSH avisar que a identidade do host mudou, confira a chave no próprio Deck antes de confiar na nova identidade.
 3. Se o executor falhar, use no Deck `journalctl --user -u deck-runner.service -n 60`. Se o painel não abrir no Plasma, confirme `flatpak info com.google.Chrome` e rode `systemctl --user restart deck-runner-display.service`. A janela usa um perfil separado do navegador. O supervisor acompanha o processo real desse perfil, inclusive quando o Flatpak o inicia fora do serviço. A janela abre ao entrar no Desktop. Para sair, toque em **Fechar painel** ou pressione **B** e confirme com **A**. O executor continua atendendo os agentes. O atalho **Deck Runner** abre o painel de novo. Se o Chrome pedir atualização ao iniciar, atualize o Flatpak pelo Discover e reinicie apenas o serviço da janela.
 4. Se apenas o túnel falhar, consulte `~/Library/Logs/deck-runner/tunnel.log` e `lsof -nP -iTCP:4040 -sTCP:LISTEN` no Mac. Para refazer a conexão, use `launchctl kickstart -k "gui/$(id -u)/io.github.deck-runner.tunnel"`. Em uma rede conhecida, o LaunchAgent volta a tentar sozinho. Ele acompanha a sessão do usuário no Mac.
@@ -27,10 +27,10 @@ O arquivo `~/.config/deck-runner/host` no Mac guarda o destino. O cliente també
 
 | Resultado na frente | Próxima verificação |
 |---|---|
-| SSH informa `Operation not permitted` ao abrir o socket | Compare o mesmo comando no Terminal do Mac. Se só a frente falha, confira se o ambiente dela tem acesso autorizado ao SSH do Deck. Uma sessão em outra máquina precisa de sua própria conexão e de um projeto cadastrado. |
+| SSH informa `Operation not permitted` ao abrir o socket | Verifique qual ambiente negou o acesso. Se houver um Mac pareado autorizado, siga a [validação por sessão e por worktree](../README.md#validação-por-sessão-e-por-worktree). |
 | SSH responde e o painel local falha | `submit`, `job`, `wait` e `logs` usam SSH. Consulte o LaunchAgent e a porta 4040 para recuperar o painel. |
 | Painel responde e SSH falha | A frente precisa conseguir abrir uma sessão SSH para enviar o snapshot. Confira o destino informado por `doctor` e o erro do SSH nessa sessão. |
-| O cadastro do worktree falha | Confira `git rev-parse --path-format=absolute --git-common-dir` e o cadastro em `deck-runner projects`. Worktrees ligados compartilham a identidade da pasta principal. |
+| O cadastro do worktree falha | Confira `git rev-parse --path-format=absolute --git-common-dir`. Para um clone local independente, confira também `git remote get-url origin` e a [regra de cadastro](projects.md#perfis). |
 
 Para confirmar uma execução de ponta a ponta, envie um teste pequeno e conhecido do próprio projeto com `deck-runner submit`. Guarde o ID e acompanhe com `deck-runner wait ID`. O ID confirma o recebimento do snapshot. O estado final, o código de saída e o log mostram o que aconteceu durante a execução.
 
