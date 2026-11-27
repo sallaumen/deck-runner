@@ -53,7 +53,8 @@ def call(action, job=None, stdin=None, raw=False):
         ):
             detail += (
                 "\nO sistema negou acesso ao socket SSH nesta sessão. "
-                "Em sessões com um Mac pareado, execute o doctor --repo e o teste nesse Mac. "
+                "Confira a permissão de rede da sessão. Uma frente local no Mac com acesso "
+                "ao Deck pode executar doctor --repo e o teste no mesmo checkout por SSH. "
                 f"Consulte {Path(__file__).resolve().with_name('README.md')}."
             )
         raise RuntimeError(detail)

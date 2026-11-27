@@ -8,11 +8,11 @@ Transforme um Steam Deck em uma bancada de testes para os projetos do seu Mac. U
 
 ## Validação por sessão e por worktree
 
-No agente que fará a validação, rode `~/.local/bin/deck-runner doctor --repo /caminho/da/frente`. O diagnóstico verifica o acesso SSH daquela sessão e o cadastro daquela cópia. O teste termina quando `wait ID` retorna o resultado e `logs ID` mostra o que rodou.
+O caminho padrão é o cliente do Mac pelo SSH da rede local. No Terminal ou em uma sessão de agente com acesso à rede do Deck, entre no worktree da frente e rode `~/.local/bin/deck-runner doctor`. Siga com [o envio do teste](#envie-um-teste) nessa mesma pasta. Guarde o ID, acompanhe `wait ID` e confira `logs ID`. Esse fluxo usa apenas o cliente instalado e o OpenSSH do Mac.
 
-Em sessões com **Remote Desktop Commander** e um Mac pareado, selecione o Mac online em `list_devices`. Use `start_process` nesse dispositivo com o caminho absoluto da cópia que contém as mudanças. Confira `git rev-parse HEAD` e `git status --short` nessa pasta. Para testes Linux, execute o cliente instalado no Mac e passe a mesma pasta em `submit --repo`. Se a ferramenta devolver um **PID**, acompanhe com `read_process_output` até receber o **ID da tarefa do Deck**. Para validar uma tela Phoenix, rode o servidor e o navegador no Mac, com porta e banco de teste próprios, e abra a rota alterada.
+Para trabalhar pelo Codex CLI já instalado no Mac, `codex -C /caminho/da/frente` abre uma sessão nesse checkout. O agente pode executar o fluxo acima quando o perfil da sessão permite SSH. Um erro de socket como `EPERM` identifica uma restrição daquela sessão. Se outra frente local tem acesso autorizado, ela pode validar a mesma cópia, inclusive as mudanças sem commit. Confira o caminho, `git rev-parse HEAD` e `git status --short`. Registre a árvore que o Deck recebeu. Para validar uma tela Phoenix, execute o servidor e o navegador no Mac, com porta e banco de teste próprios.
 
-Um erro de socket como `EPERM` descreve o ambiente que tentou abrir a conexão. Em equipes com vários agentes, a sessão com acesso autorizado ao Mac pode validar o trabalho das demais quando tem acesso às mesmas mudanças. Registre a árvore enviada e o resultado, ou a rota e o tamanho da tela que o navegador abriu.
+Se a equipe já usa **Remote Desktop Commander**, ele é uma opção para operar o Mac a partir de uma conversa. Selecione o Mac online em `list_devices`, use `start_process` com o caminho absoluto do worktree e acompanhe o PID com `read_process_output` até receber o ID da tarefa do Deck.
 
 ## Experimente em um minuto
 
