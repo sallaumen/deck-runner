@@ -348,6 +348,7 @@ def doctor(repo):
             except (OSError, ValueError, subprocess.SubprocessError) as exc:
                 errors.append(f"Cadastro do worktree ({repo}): {exc}")
 
+    checkout_ready = repo is not None and remote is not None and not errors
     try:
         with urllib.request.urlopen(url, timeout=5) as reply:
             local = json.load(reply)
@@ -362,6 +363,11 @@ def doctor(repo):
     except (OSError, ValueError) as exc:
         errors.append(f"Painel local ({url}): {exc}")
     if errors:
+        if checkout_ready:
+            errors.append(
+                "O checkout passou nas verificações por SSH. Para enviar sem o painel, "
+                f"execute deck-runner preflight --repo {shlex.quote(str(repo))} e siga com submit."
+            )
         raise RuntimeError("\n".join(errors))
     return 0
 

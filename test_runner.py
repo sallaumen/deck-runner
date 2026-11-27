@@ -400,6 +400,17 @@ class ClientReadinessTest(unittest.TestCase):
         with self.assertRaisesRegex(RuntimeError, "not registered"):
             client.doctor(".")
 
+    def test_doctor_points_to_ssh_when_only_dashboard_fails(self):
+        self.enterContext(patch.object(client.catalog, "common_dir", return_value=Path("/repo/.git")))
+        self.panel.side_effect = ConnectionRefusedError("Connection refused")
+        with self.assertRaisesRegex(RuntimeError, "preflight --repo") as failure:
+            client.doctor("/repo")
+        self.assertIn("Connection refused", str(failure.exception))
+        self.remote["alive"] = False
+        with self.assertRaises(RuntimeError) as failure:
+            client.doctor("/repo")
+        self.assertNotIn("preflight --repo", str(failure.exception))
+
 
 class AgentTransportTest(unittest.TestCase):
     def setUp(self):
