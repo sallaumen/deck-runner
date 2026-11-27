@@ -30,7 +30,3 @@ O serviço mantém um repositório Git por projeto, uma referência por tarefa e
 | Expirou ou atingiu limite | O executor encerrou a tarefa por tempo, crescimento do log ou espaço em disco. |
 
 Um observador lê as mudanças de estado confirmadas no SQLite a cada 0,6 s e avisa os painéis conectados por Server-Sent Events. Cada painel busca o estado atual ao receber o aviso ou reconectar. Uma consulta periódica mantém o acompanhamento se o fluxo cair e atualiza CPU, memória e logs. O inventário de disco roda separadamente, com uma única medição compartilhada por estação. O Mac pode cair durante uma execução sem retirar sua vaga ou perder o resultado. A identificação da estação, persistida no banco, permite ao diagnóstico confirmar que as conexões SSH e HTTP chegaram ao mesmo Deck.
-
-## Evidência de operação
-
-A publicação foi exercitada com um clone público no Steam Deck, instalação do serviço, build da imagem base e testes da bancada no próprio hardware. Em uma instalação com quatro projetos, o LaunchAgent restabeleceu o túnel após o encerramento do processo SSH e o cliente voltou a encontrar a mesma estação. A validação de interface inclui 1280 × 800, tela de telefone, filtro, consulta de logs, desconexão e recuperação. Os testes reproduzíveis estão em [CONTRIBUTING.md](../CONTRIBUTING.md).

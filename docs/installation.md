@@ -44,7 +44,7 @@ cd ~/projects
 git clone https://github.com/sallaumen/deck-runner.git
 cd deck-runner
 python3 scripts/install-mac.py deck@steamdeck.local
-~/.local/bin/deck-runner doctor
+~/.local/bin/deck-runner doctor --station
 ```
 
 Mantenha esse clone no local da instalação. O comando do Mac aponta para ele. O instalador testa SSH, prepara um LaunchAgent que reconecta automaticamente e verifica se o painel em `127.0.0.1:4040` pertence ao Deck esperado. A porta deve estar livre no Mac e no Deck. Para mover o clone ou trocar de host, rode novamente o instalador da nova pasta com o nome correto.

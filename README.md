@@ -1,22 +1,40 @@
 # Deck Runner
 
-Transforme um Steam Deck em uma bancada de testes para os projetos do seu Mac. Um agente envia o worktree em que está trabalhando, recebe o identificador da tarefa e acompanha o resultado. Na tela do Deck, você vê quem está usando a máquina, o que está rodando e quando uma vaga fica livre.
+Execute os testes de um worktree do Mac em um Steam Deck. O cliente envia um snapshot por SSH, incluindo edições locais. O Deck mantém a fila e o resultado mesmo se o Mac desconectar.
 
-![Painel do Deck Runner com duas tarefas fictícias em execução, ocupação, resultados e gráficos de uso por projeto](docs/station.png)
+## Envie um teste
 
-*Prévia com projetos fictícios. O painel instalado mostra a fila real.*
+Em um projeto já cadastrado, execute estes comandos na sessão e na pasta que contêm as mudanças. O exemplo usa o perfil Mix.
+
+```sh
+RUNNER="$HOME/.local/bin/deck-runner"
+"$RUNNER" preflight --repo .
+```
+
+Com `ready: true`, envie o comando que cobre a alteração. Guarde os campos `id` e `tree` do JSON retornado.
+
+```sh
+"$RUNNER" submit --repo . --agent "Codex · tarefa 42" --label "Regras de pagamento" -- mix test
+"$RUNNER" wait ID --summary
+```
+
+Substitua `ID` pelo identificador recebido. O resumo cabe em uma linha de JSON e traz o projeto, o comando, a árvore testada, o estado, o código de saída e a última contagem reconhecida no log. Relate a contagem quando `test_summary` estiver preenchido. Em caso de falha, o campo `next` indica como ler a saída relevante. [Campos do resultado e códigos de saída](docs/projects.md#contrato-de-execução).
 
 ## Validação por sessão e por worktree
 
-O caminho padrão é o cliente do Mac pelo SSH da rede local. Na sessão que vai enviar o teste, rode `~/.local/bin/deck-runner preflight --repo /caminho/da/frente`. Ele consulta o executor por SSH e verifica o cadastro e o disco. Com `ready: true`, siga com [o envio do teste](#envie-um-teste) dessa pasta. Com `ready: false`, o campo `code` aponta para a [ação de recuperação](docs/operations.md#decisão-da-frente-antes-do-envio). Use `doctor` quando também precisar diagnosticar o painel.
+- **Preflight bloqueado.** Abra o arquivo indicado em `guide` e procure o valor de `code`. O envio depende do SSH. O painel também é verificado por `doctor`. [Diagnóstico por código](docs/operations.md#decisão-da-frente-antes-do-envio).
+- **Outra frente com acesso ao Mac.** Confirme a pasta, o HEAD e as edições locais antes do envio. O caminho padrão usa OpenSSH. Se a equipe já usa Remote Desktop Commander, o PID de `start_process` pertence ao Mac. Leia a saída desse processo para obter o ID do Deck.
+- **O envio perdeu a conexão.** Com ID, retome `wait ID --summary`. Sem ID, procure o agente, o projeto e o rótulo em `status --json` antes de reenviar. Depois de editar o código, envie outro snapshot.
 
-Para trabalhar pelo Codex CLI já instalado no Mac, `codex -C /caminho/da/frente` abre uma sessão nesse checkout. Se outra frente local tem acesso autorizado ao Deck, ela pode validar a mesma cópia, inclusive as mudanças sem commit. Confira o caminho, `git rev-parse HEAD` e `git status --short`. Guarde o ID e a árvore de `submit`, acompanhe `wait ID` e confirme o resultado em `logs ID`. Para validar uma tela Phoenix, execute o servidor e o navegador no Mac, com porta e banco de teste próprios.
+## Instale a bancada
 
-Se a equipe já usa **Remote Desktop Commander**, ele é uma opção para operar o Mac a partir de uma conversa. Selecione o Mac online em `list_devices`, use `start_process` com o caminho absoluto do worktree e acompanhe o PID com `read_process_output` até receber o ID da tarefa do Deck.
+Siga o [guia do Deck e do Mac](docs/installation.md). Cadastre a pasta principal uma vez com o perfil, a porta e o usuário de banco do projeto. Após a instalação, abra **Testes no Deck** na Mesa ou os [controles no Mac](http://127.0.0.1:4040/).
+
+![Painel do Deck Runner com duas tarefas fictícias e a ocupação por projeto](docs/station.png)
 
 ## Experimente em um minuto
 
-Com Git e Python 3.11 ou superior, a prévia funciona sem hardware adicional. Os controles da prévia são somente para leitura.
+Para abrir a prévia de leitura com dados fictícios, use Git e Python 3.11+.
 
 ```sh
 git clone https://github.com/sallaumen/deck-runner.git
@@ -24,52 +42,13 @@ cd deck-runner
 python3 scripts/preview.py
 ```
 
-Abra [a demonstração local](http://127.0.0.1:4041/?screen=1). Para ver a bancada ociosa ou pausada, passe `--state idle` ou `--state paused`. Ctrl+C encerra a prévia.
+Abra a [prévia local](http://127.0.0.1:4041/?screen=1). Use `--state idle` ou `--state paused` para experimentar outros estados.
 
-## Instale a bancada
-
-O executor usa Python, SQLite e Podman no Deck. A interface é HTML, CSS e JavaScript servidos pelo próprio processo. O Mac envia as tarefas por SSH e mantém um túnel para o painel.
-
-1. Prepare o SSH e as imagens de teste no Deck. O [guia de instalação](docs/installation.md) traz os comandos, os pré-requisitos e a configuração de energia.
-2. No clone do projeto no **Deck**, rode `python3 scripts/install-deck.py`.
-3. No clone do projeto no **Mac**, rode `python3 scripts/install-mac.py deck@steamdeck.local`. O instalador verifica a identidade da estação nas duas pontas e coloca **Testes no Deck** e **Adicionar projeto ao Deck** na Mesa.
-4. Abra [o painel no Mac](http://127.0.0.1:4040/) ou [a tela de acompanhamento](http://127.0.0.1:4040/?screen=1). Ao entrar no Desktop do Deck, a tela de acompanhamento abre automaticamente.
-
-Use **Testes no disco** para consultar o espaço por projeto e liberar cópias de testes encerrados. A bancada reserva 10 GiB para o Deck e exige 15 GiB livres para admitir novos testes.
-
-Nos controles do Mac, selecione um projeto e salve o endereço nos favoritos. Ao reabrir esse endereço, a lista de tarefas, os resultados e os gráficos recuperam o filtro.
-
-## Envie um teste
-
-Cadastre uma vez a pasta principal do repositório em `~/projects`. Seus worktrees passam a compartilhar a fila e as vagas do projeto. O exemplo usa um projeto Elixir com PostgreSQL na porta 5432.
-
-```sh
-export PATH="$HOME/.local/bin:$PATH"
-deck-runner add ~/projects/meu-app --profile mix --db-user postgres --port 5432
-cd ~/projects/meu-app
-deck-runner submit --repo . --agent "Codex · tarefa 42" --label "Regras de pagamento" -- mix test
-```
-
-O envio retorna um JSON com o campo `id`. Use esse valor nos comandos seguintes.
-
-```sh
-deck-runner wait ID
-deck-runner logs ID --tail 80
-deck-runner job ID
-```
-
-Em **Ocupação do Deck → Ajustar vagas**, escolha quantos testes podem rodar ao mesmo tempo no Deck e por projeto. A primeira instalação começa com cinco vagas no total e três por projeto. A fila também considera memória e espaço em disco. Cada tarefa tem seu próprio diretório de trabalho, container e, no perfil Mix, banco de dados. Quando o Mac se desconecta, as tarefas aceitas continuam no Deck.
-
-| Quero… | Onde encontrar |
+| Preciso de… | Guia |
 |---|---|
-| Cadastrar projetos Mix, Node, Python ou uma imagem própria | [Projetos e uso pelos agentes](docs/projects.md) |
-| Ver o piloto, experimentar um resultado e ajustar a intensidade | [Efeitos da estação, com prévia animada](docs/motion.md) |
-| Comparar envios e tempo de execução por projeto | [Gráficos da bancada](docs/operations.md#comparar-o-uso-por-projeto) |
-| Ler um log ao vivo e voltar à mesma tarefa pelo controle | [Usar o Deck sem teclado](docs/operations.md#usar-o-deck-sem-teclado) |
-| Conferir o vídeo no Mac e retomar a transmissão após um reinício | [Steam Link no Mac](docs/operations.md#retomar-a-transmissão-no-mac) |
-| Acompanhar o caminho do snapshot até o resultado | [Arquitetura e estados](docs/architecture.md) |
-| Entender a fila, revisar os limites ou recuperar a conexão | [Operação e diagnóstico](docs/operations.md) |
-| Modificar a interface ou executar as verificações | [Como contribuir](CONTRIBUTING.md) e [design do painel](DESIGN.md) |
-| Avaliar quais arquivos viajam e quem pode operar a fila | [Modelo de confiança](SECURITY.md) |
+| Perfis Mix, Node, Python e customizados, cadastro e snapshots | [Projetos e agentes](docs/projects.md) |
+| Fila, disco, reconexão, Steam Link ou atualização | [Operação e recuperação](docs/operations.md) |
+| Estados, isolamento e controles de acesso | [Arquitetura](docs/architecture.md) e [modelo de confiança](SECURITY.md) |
+| Testes da bancada e alterações na interface | [Como contribuir](CONTRIBUTING.md), [design](DESIGN.md) e [efeitos da estação](docs/motion.md) |
 
 Distribuído sob a [licença MIT](LICENSE).
