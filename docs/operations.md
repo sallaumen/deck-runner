@@ -27,7 +27,7 @@ O arquivo `~/.config/deck-runner/host` no Mac guarda o destino. O cliente també
 
 | Resultado na frente | Próxima verificação |
 |---|---|
-| SSH informa `Operation not permitted` ao abrir o socket | Verifique qual ambiente negou o acesso. Se houver um Mac pareado autorizado, siga a [validação por sessão e por worktree](../README.md#validação-por-sessão-e-por-worktree). |
+| SSH informa `Operation not permitted` ao abrir o socket | Confira o perfil de rede da sessão. Uma frente local no Mac com acesso à LAN pode validar o mesmo checkout por SSH. Veja a [validação por sessão e por worktree](../README.md#validação-por-sessão-e-por-worktree). |
 | SSH responde e o painel local falha | `submit`, `job`, `wait` e `logs` usam SSH. Consulte o LaunchAgent e a porta 4040 para recuperar o painel. |
 | Painel responde e SSH falha | A frente precisa conseguir abrir uma sessão SSH para enviar o snapshot. Confira o destino informado por `doctor` e o erro do SSH nessa sessão. |
 | O cadastro do worktree falha | Confira `git rev-parse --path-format=absolute --git-common-dir`. Para um clone local independente, confira também `git remote get-url origin` e a [regra de cadastro](projects.md#perfis). |
