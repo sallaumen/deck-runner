@@ -69,8 +69,13 @@ def ssh_error(detail):
     return RunnerError("ssh_error", detail)
 
 
-def call(action, job=None, stdin=None, raw=False):
+def call(action, job=None, stdin=None, raw=False, *, summary=False, tail=0):
     command = shlex.join(["python3", REMOTE, action] + ([job] if job else []))
+    # Per-request hints. Older executors ignore them and return the original payload.
+    if summary:
+        command = "DECK_RUNNER_JOB_SUMMARY=1 " + command
+    if tail > 0:
+        command = f"DECK_RUNNER_LOG_TAIL={int(tail)} " + command
     try:
         p = subprocess.run(
             SSH + [command], stdin=stdin, stdout=subprocess.PIPE, stderr=subprocess.PIPE,
@@ -438,21 +443,41 @@ def preflight(repo):
         report.update(ready=False, code="client_error", detail=str(exc))
     else:
         report.update(ready=True, code="ready", project=project["name"], queue_note=state.get("reason", ""))
+    if not report["ready"]:
+        report["guide"] = str(Path(__file__).resolve().parent / "docs" / "operations.md")
     print(json.dumps(report, ensure_ascii=False))
     return 0 if report["ready"] else 2
 
 
-def wait_job(job_id, poll):
+def job_summary(job):
+    meta = job["meta"]
+    report = {
+        "id": job["id"], "project": meta["project"], "command": meta["command"],
+        "tree": meta.get("tree"), "state": job["state"], "exit_code": job.get("exit_code"),
+        "test_summary": job.get("test_summary"),
+    }
+    if job.get("error"):
+        report["error"] = job["error"]
+    job_id = shlex.quote(job["id"])
+    if job["state"] not in FINISHED:
+        report["next"] = f"deck-runner wait {job_id} --summary"
+    elif job["state"] != "passed":
+        report["next"] = f"deck-runner logs {job_id} --tail 40"
+    return report
+
+
+def wait_job(job_id, poll, summary=False):
     previous = None
     failures = 0
     while True:
         try:
-            job = call("job", job_id)
+            job = call("job", job_id, summary=summary)
             if not isinstance(job, dict) or not isinstance(job.get("state"), str):
                 raise RunnerError("station_response", "Resposta do executor sem o estado da tarefa.")
         except RunnerError as exc:
             if exc.code not in {"ssh_timeout", "ssh_connection"} or failures >= 3:
-                raise RunnerError(exc.code, f"{exc}\nRetome com deck-runner wait {job_id}.") from exc
+                resume = f"deck-runner wait {shlex.quote(job_id)}" + (" --summary" if summary else "")
+                raise RunnerError(exc.code, f"{exc}\nRetome com {resume}.") from exc
             failures += 1
             print(f"{job_id}: {exc.code}. Nova consulta ao mesmo ID ({failures}/3).", file=sys.stderr)
             time.sleep(min(10, max(1, poll)))
@@ -462,13 +487,16 @@ def wait_job(job_id, poll):
             print(f"{job_id}: {job['state']}", file=sys.stderr)
             previous = job["state"]
         if job["state"] in FINISHED:
-            print(json.dumps(job, ensure_ascii=False))
+            print(json.dumps(job_summary(job) if summary else job, ensure_ascii=False))
             return 0 if job["state"] == "passed" else 1
         time.sleep(max(1, poll))
 
 
 def main():
-    parser = argparse.ArgumentParser(description=__doc__)
+    parser = argparse.ArgumentParser(
+        description="Envie testes do checkout atual ao Steam Deck por SSH.",
+        epilog="Comece com preflight --repo . e acompanhe o ID retornado por submit com wait ID --summary.",
+    )
     sub = parser.add_subparsers(dest="action", required=True)
     listing = sub.add_parser(
         "projects", help="List local repositories and their registration"
@@ -495,7 +523,7 @@ def main():
     )
     add.add_argument("--port", type=int, default=5432)
     add.add_argument("--db-user", default="postgres")
-    submit = sub.add_parser("submit")
+    submit = sub.add_parser("submit", help="Envie o snapshot e receba o ID e a árvore")
     submit.add_argument("--size", choices=["normal", "large", "xl"], default="normal")
     submit.add_argument("--repo", default=".")
     submit.add_argument(
@@ -507,11 +535,18 @@ def main():
     for action in ("status", "pause", "resume"):
         p = sub.add_parser(action)
         p.add_argument("--json", action="store_true")
-    for action in ("job", "logs", "wait", "cancel"):
-        p = sub.add_parser(action)
+    for action, help_text in (
+        ("job", "Consulte o estado atual ou o recibo compacto com --summary"),
+        ("logs", "Leia as últimas linhas de uma tarefa"),
+        ("wait", "Aguarde o resultado ou obtenha o recibo compacto com --summary"),
+        ("cancel", "Cancele uma tarefa pelo ID"),
+    ):
+        p = sub.add_parser(action, help=help_text)
         p.add_argument("id")
+        if action in ("job", "wait"):
+            p.add_argument("--summary", action="store_true", help="Print a compact JSON test receipt")
         if action == "logs":
-            p.add_argument("--tail", type=int, default=100)
+            p.add_argument("--tail", type=int, default=100, help="Last N lines (default: 100, 0: full log)")
         if action == "wait":
             p.add_argument("--poll", type=int, default=5)
     diag = sub.add_parser(
@@ -607,10 +642,12 @@ def main():
         s = call(args.action)
         print(json.dumps(s, ensure_ascii=False)) if args.json else print_status(s)
     elif args.action == "logs":
-        lines = call("logs", args.id, raw=True).decode(errors="replace").splitlines()
+        lines = call("logs", args.id, raw=True, tail=args.tail).decode(errors="replace").splitlines()
         print("\n".join(lines[-args.tail :] if args.tail > 0 else lines))
     elif args.action == "wait":
-        return wait_job(args.id, args.poll)
+        return wait_job(args.id, args.poll, args.summary)
+    elif args.action == "job" and args.summary:
+        print(json.dumps(job_summary(call("job", args.id, summary=True)), ensure_ascii=False))
     else:
         print(json.dumps(call(args.action, args.id), ensure_ascii=False, indent=2))
     return 0

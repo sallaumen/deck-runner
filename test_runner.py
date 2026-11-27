@@ -448,6 +448,7 @@ class AgentTransportTest(unittest.TestCase):
                 report = json.loads(self.out.getvalue())
                 self.assertFalse(report["ready"])
                 self.assertEqual(report["code"], code)
+                self.assertTrue(Path(report["guide"]).is_file())
                 self.assertIn(stderr, report["detail"])
 
     def test_submit_and_preflight_share_admission_failures(self):
@@ -491,6 +492,113 @@ class AgentTransportTest(unittest.TestCase):
             self.assertEqual(remote.call_count, attempts)
             self.assertEqual(sleep.call_count, attempts - 1)
         self.assertEqual(self.out.getvalue(), "")
+
+
+class ResultSummaryTest(unittest.TestCase):
+    def test_recognized_footers_keep_last_observed_counts(self):
+        for command, output, expected in (
+            (["mix", "test", "test/one.exs"],
+             "3 tests, 0 failures\n\x1b[31m1 doctest, 2 tests, 1 failure, 1 skipped\x1b[0m\r\n",
+             "1 doctest, 2 tests, 1 failure, 1 skipped"),
+            (["python3", "-m", "unittest", "discover"],
+             "Ran 7 tests in 2.004s\n\nFAILED (errors=1, skipped=2)\n",
+             "Ran 7 tests in 2.004s · FAILED (errors=1, skipped=2)"),
+            (["python3", "-m", "unittest"], "Ran 1 test in 0.001s\n\nOK\n", "Ran 1 test in 0.001s · OK"),
+            (["node", "--test"], "# tests 4\n# suites 1\n# pass 3\n# fail 0\n# skipped 1\n",
+             "tests 4 · suites 1 · pass 3 · fail 0 · skipped 1"),
+            (["npm", "test"], "ℹ tests 0\nℹ suites 0\nℹ pass 0\nℹ fail 0\n",
+             "tests 0 · suites 0 · pass 0 · fail 0"),
+            (["mix", "compile"], "4 tests, 0 failures\n", None),
+            (["mix", "test"], "expected: 4 tests, 0 failures\n", None),
+            (["node", "--test"], "# tests 4\n", None),
+            (["python3", "-m", "unittest"], "Ran 4 tests in 1.0s\n", None),
+        ):
+            with self.subTest(command=command, output=output):
+                self.assertEqual(server.test_footer(command, output), expected)
+
+    def test_log_tail_preserves_bytes_across_blocks_and_handles_expiry(self):
+        with tempfile.TemporaryDirectory() as directory:
+            path = Path(directory) / "output.log"
+            destination = io.BytesIO()
+            server.write_log(path, destination, 4)
+            self.assertEqual(destination.getvalue(), b"")
+            for data in (b"", b"\n", b"a\n\nb\r\n", b"a\n" + b"z" * 150000 + b"\nlast", b"no newline"):
+                path.write_bytes(data)
+                for lines in (0, 1, 2, 3, 100):
+                    with self.subTest(size=len(data), lines=lines):
+                        destination = io.BytesIO()
+                        server.write_log(path, destination, lines)
+                        self.assertEqual(destination.getvalue(), b"".join(data.splitlines(True)[-lines:]))
+            footer = b"4 tests, 0 failures\n"
+            for prefix, expected in ((b"a related message: ", ""), (b"a complete line\n", footer.decode())):
+                path.write_bytes(prefix + footer)
+                self.assertEqual(server.tail_log(path, len(footer), whole_lines=True), expected)
+
+    def test_rpc_summary_only_reads_log_on_request_for_a_finished_suite(self):
+        job_id = "a" * 12
+        root = Path(self.enterContext(tempfile.TemporaryDirectory()))
+        self.enterContext(patch.object(server, "ROOT", root))
+        self.enterContext(patch.object(server.sys, "argv", ["server.py", "job", job_id]))
+        job = dict(id=job_id, meta=json.dumps(dict(command=["mix", "test"])), state="running")
+        self.enterContext(patch.object(server, "jobrow", side_effect=lambda _: job.copy()))
+        log_dir = root / "jobs" / job_id
+        log_dir.mkdir(parents=True)
+        log = log_dir / "output.log"
+        log.write_text("5 tests, 0 failures\n")
+        for flag, state, expected in (("1", "running", {}), ("0", "passed", {}),
+                                      ("1", "passed", {"test_summary": "5 tests, 0 failures"}),
+                                      ("1", "failed", {"test_summary": None})):
+            job["state"] = state
+            if state == "failed":
+                log.unlink()
+            with (self.subTest(flag=flag, state=state),
+                  patch.dict(server.os.environ, DECK_RUNNER_JOB_SUMMARY=flag),
+                  contextlib.redirect_stdout(io.StringIO()) as out):
+                server.main()
+                result = json.loads(out.getvalue())
+                self.assertEqual({k: v for k, v in result.items() if k == "test_summary"}, expected)
+
+    def test_cli_receipt_preserves_outcome_scope_and_legacy_job(self):
+        job_id = "b" * 12
+        meta = dict(project="sample", command=["mix", "test", "test/example.exs"], tree="abc", lane=2)
+        for action, state, summary, exit_code, next_action in (
+            ("wait", "passed", True, 0, None),
+            ("wait", "failed", True, 1, f"deck-runner logs {job_id} --tail 40"),
+            ("job", "queued", True, 0, f"deck-runner wait {job_id} --summary"),
+            ("job", "failed", False, 0, None),
+        ):
+            job = dict(id=job_id, state=state, meta=meta, exit_code={"passed": 0, "failed": 1}.get(state))
+            if state == "failed":
+                job.update(error="post-test command failed", test_summary="4 tests, 0 failures")
+            argv = ["deck-runner", action, job_id] + (["--summary"] if summary else [])
+            with (self.subTest(argv=argv, state=state),
+                  patch.object(client.sys, "argv", argv),
+                  patch.object(client, "call", return_value=job) as remote,
+                  contextlib.redirect_stdout(io.StringIO()) as out,
+                  contextlib.redirect_stderr(io.StringIO()) as err):
+                self.assertEqual(client.main(), exit_code)
+                result = json.loads(out.getvalue())
+                if summary:
+                    remote.assert_called_once_with("job", job_id, summary=True)
+                    self.assertEqual(result, {
+                        "id": job_id, "project": meta["project"], "command": meta["command"], "tree": meta["tree"],
+                        "state": state, "exit_code": job["exit_code"], "test_summary": job.get("test_summary"),
+                        **({"error": job["error"]} if "error" in job else {}),
+                        **({"next": next_action} if next_action else {}),
+                    })
+                else:
+                    self.assertEqual(result, job)
+                if action == "wait":
+                    self.assertIn(state, err.getvalue())
+
+    def test_log_request_hints_work_with_an_older_executor(self):
+        with (patch.object(client.sys, "argv", ["deck-runner", "logs", "abc", "--tail", "2"]),
+              patch.object(client.subprocess, "run", return_value=subprocess.CompletedProcess(
+                  [], 0, b"first\nsecond\nthird\n", b"")) as ssh,
+              contextlib.redirect_stdout(io.StringIO()) as out):
+            client.main()
+            self.assertEqual(out.getvalue(), "second\nthird\n")
+            self.assertTrue(ssh.call_args.args[0][-1].startswith("DECK_RUNNER_LOG_TAIL=2 "))
 
 
 class LocalCloneRegistrationTest(unittest.TestCase):

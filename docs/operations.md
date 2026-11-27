@@ -9,17 +9,9 @@
 | Janela ao entrar no Plasma | Autostart do KDE e `deck-runner-display.service` | `systemctl --user status deck-runner-display` |
 | Túnel ao entrar no Mac | LaunchAgent `io.github.deck-runner.tunnel` | `~/.local/bin/deck-runner doctor --station` |
 
-O painel e a fila atendem somente em loopback. No Mac, abra **Testes no Deck**. O modo **Tela do Deck** privilegia execução, ocupação e resultado por projeto. **Abrir controles** permite filtrar, pausar novas admissões, consultar logs e cancelar uma tarefa. A sequência recente resume até 12 resultados dos projetos ativos. Toque em uma marca ou selecione-a pelo controle para abrir o log daquela execução. Um estado offline conserva a última leitura e informa quando o painel está tentando reconectar.
-
 ## Diagnóstico em ordem
 
-1. Na sessão da frente afetada, execute `~/.local/bin/deck-runner doctor --repo .` dentro do worktree. Ele consulta o executor por SSH, verifica o cadastro Git e testa o painel local de forma independente. A identidade da estação precisa coincidir nas duas consultas. Dentro de um repositório, `doctor` seleciona o worktree atual. Use `--station` para verificar somente a estação e o túnel.
-2. Se o SSH falhar, confirme que o Deck está acordado, na mesma rede e com `sshd` ativo. Teste `ssh -o BatchMode=yes deck@steamdeck.local true`. Se você trocou de rede ou de roteador, reveja a resolução do nome local. Se o SSH avisar que a identidade do host mudou, confira a chave no próprio Deck antes de confiar na nova identidade.
-3. Se o executor falhar, use no Deck `journalctl --user -u deck-runner.service -n 60`. Se o painel não abrir no Plasma, confirme `flatpak info com.google.Chrome` e rode `systemctl --user restart deck-runner-display.service`. A janela usa um perfil separado do navegador. O supervisor acompanha o processo real desse perfil, inclusive quando o Flatpak o inicia fora do serviço. A janela abre ao entrar no Desktop. Para sair, toque em **Fechar painel** ou pressione **B** e confirme com **A**. O executor continua atendendo os agentes. O atalho **Deck Runner** abre o painel de novo. Se o Chrome pedir atualização ao iniciar, atualize o Flatpak pelo Discover e reinicie apenas o serviço da janela.
-4. Se apenas o túnel falhar, consulte `~/Library/Logs/deck-runner/tunnel.log` e `lsof -nP -iTCP:4040 -sTCP:LISTEN` no Mac. Para refazer a conexão, use `launchctl kickstart -k "gui/$(id -u)/io.github.deck-runner.tunnel"`. Em uma rede conhecida, o LaunchAgent volta a tentar sozinho. Ele acompanha a sessão do usuário no Mac.
-5. Se um teste aguarda, leia o motivo no painel. Se encontrar uma falha, abra o log e confirme a árvore de origem com `deck-runner job ID` antes de repetir.
-
-O arquivo `~/.config/deck-runner/host` no Mac guarda o destino. O cliente também aceita `DECK_RUNNER_HOST` para uma conexão avulsa. Para mudar a conexão persistente, rode o instalador do Mac novamente.
+Para enviar um teste, rode `deck-runner preflight --repo CAMINHO` na frente afetada. Para investigar a instalação inteira, use `doctor --repo CAMINHO`. Fora de um projeto, `doctor --station` verifica SSH, executor e túnel do painel. O destino SSH vem de `~/.config/deck-runner/host`; `DECK_RUNNER_HOST` seleciona um destino avulso.
 
 ### Decisão da frente antes do envio
 
@@ -27,7 +19,7 @@ O arquivo `~/.config/deck-runner/host` no Mac guarda o destino. O cliente també
 
 | Campo `code` | Como prosseguir |
 |---|---|
-| `ready` | Envie o teste. `queue_note` pode indicar pausa, memória ou vagas. Aguarde o ID aceito mesmo que a execução demore a começar. |
+| `ready` | Envie o teste. `queue_note` pode indicar pausa, memória ou vagas. Guarde o ID e aguarde o término. |
 | `session_socket_denied` | O processo recebeu uma negativa ao abrir o socket. Confira o perfil efetivo da sessão. Uma frente com acesso autorizado ao mesmo checkout pode verificar o caminho e o estado do Git, executar o próprio preflight e enviar por SSH. |
 | `ssh_dns`, `ssh_connection`, `ssh_timeout` | Confira o destino, a resolução do nome e a disponibilidade do Deck na rede. Com um ID já recebido, retome `wait ID`. |
 | `ssh_auth`, `ssh_host_key` | Confira a identidade do usuário e a chave disponível no Mac. Se a chave da estação mudou, compare a impressão digital no Deck antes de atualizar a confiança. |
@@ -35,9 +27,9 @@ O arquivo `~/.config/deck-runner/host` no Mac guarda o destino. O cliente també
 | `executor_offline`, `disk_limit` | Consulte o serviço ou o espaço no Deck de acordo com o erro. Repita o preflight após a recuperação. |
 | `ssh_error`, `client_error`, `station_response` | Leia `detail` e execute `doctor --repo CAMINHO` no mesmo ambiente para obter o diagnóstico da estação e do túnel. |
 
-Após o envio, `wait ID` repete até três consultas consecutivas em falhas de transporte reconhecidas. A consulta usa sempre o mesmo ID. Se a conexão continuar indisponível, guarde esse ID e retome o acompanhamento quando a sessão recuperar acesso. Um erro de comunicação deixa o resultado do teste em aberto. Registre o estado final, o código de saída e o resumo de `logs ID` antes de declarar que o teste passou.
+Após receber o ID, retome com `wait ID --summary`. O cliente repete até três consultas consecutivas em falhas transitórias de transporte. Se a comunicação continuar indisponível, o resultado fica em aberto até a próxima consulta.
 
-**Quando Claude e GPT divergem.** Execute o preflight no mesmo projeto e guarde o código de saída em cada sessão que tiver disponível. Se uma delas reporta `session_socket_denied` e a outra recebe `ready`, o bloqueio observado está no caminho da primeira sessão. Mesmo no macOS, `uname` identifica somente o sistema operacional. O `codex doctor` descreve a instalação e a configuração que a CLI carregou. Para afirmar que aquela conversa envia testes, procure um ID de execução obtido por ela. Ao usar o Mac pareado, registre qual ambiente iniciou o teste.
+**Quando Claude e GPT divergem.** Compare o preflight no mesmo checkout em cada sessão. Uma negativa ao abrir o socket em uma delas e `ready` na outra isolam o problema no caminho da primeira. Com o Codex CLI instalado no Mac, `codex -C /caminho/da/frente` abre uma sessão local nessa pasta. Confirme `git rev-parse HEAD` e `git status --short` antes do envio. Registre a árvore que o Deck aceitou.
 
 **Quando a frente precisa abrir Phoenix no Mac.** Faça as sondagens na sessão que vai iniciar o servidor e apenas para os serviços que o projeto usa.
 
@@ -49,46 +41,30 @@ Se a validação local estiver bloqueada, um `preflight` bem-sucedido ainda perm
 
 ### O painel está ativo e uma frente falha ao enviar
 
-**Executor ativo** indica que o Deck concluiu um ciclo de verificação da fila nos últimos 15 segundos. A tela local do Deck consegue receber essa informação mesmo com o Mac desconectado. Uma fila pausada ou aguardando memória aceita tarefas para executar depois. Com menos de 15 GiB livres, novos envios são recusados.
+**Executor ativo** indica que o Deck verificou a fila nos últimos 15 segundos. Uma fila pausada ou com pouca memória ainda pode receber tarefas.
 
-| Resultado na frente | Próxima verificação |
+| Sintoma | Onde verificar |
 |---|---|
-| SSH informa `Operation not permitted` ao abrir o socket | Confira o perfil de rede da sessão. Uma frente local no Mac com acesso à LAN pode validar o mesmo checkout por SSH. Veja a [validação por sessão e por worktree](../README.md#validação-por-sessão-e-por-worktree). |
-| SSH responde e o painel local falha | `submit`, `job`, `wait` e `logs` usam SSH. Consulte o LaunchAgent e a porta 4040 para recuperar o painel. |
-| Painel responde e SSH falha | A frente precisa conseguir abrir uma sessão SSH para enviar o snapshot. Confira o destino informado por `doctor` e o erro do SSH nessa sessão. |
-| O cadastro do worktree falha | Confira `git rev-parse --path-format=absolute --git-common-dir`. Para um clone local independente, confira também `git remote get-url origin` e a [regra de cadastro](projects.md#perfis). |
-
-Para confirmar uma execução de ponta a ponta, envie um teste pequeno e conhecido do próprio projeto com `deck-runner submit`. Guarde o ID e acompanhe com `deck-runner wait ID`. O ID confirma o recebimento do snapshot. O estado final, o código de saída e o log mostram o que aconteceu durante a execução.
+| SSH falha | Teste `ssh -o BatchMode=yes deck@steamdeck.local true` na sessão de envio. Confira o código do preflight acima. |
+| Serviço indisponível | No Deck, leia `journalctl --user -u deck-runner.service -n 60`. |
+| SSH funciona e o painel do Mac falha | O envio pode seguir por SSH. Para recuperar o painel, consulte `~/Library/Logs/deck-runner/tunnel.log` e `lsof -nP -iTCP:4040 -sTCP:LISTEN`. O LaunchAgent aceita `launchctl kickstart -k "gui/$(id -u)/io.github.deck-runner.tunnel"`. |
+| Painel do Plasma não abre | Confira `flatpak info com.google.Chrome` e `systemctl --user status deck-runner-display`. Para reiniciar a janela, use `systemctl --user restart deck-runner-display`. |
 
 ## Usar o Deck sem teclado
 
-Ao entrar na área de trabalho do Plasma, o atalho de inicialização abre **Deck Runner**. Use o analógico esquerdo ou o direcional para mover o foco. **A** seleciona. **B** volta de um log ou abre a confirmação para fechar o painel. O botão **Fechar painel** também funciona com o toque, o mouse e o teclado. O atalho **Deck Runner** na área de trabalho reabre a janela. Para jogar, use o modo Big Picture no Steam ou o atalho do SteamOS para o modo de jogo.
+No Plasma, o atalho **Deck Runner** abre o painel. Use o direcional para mover o foco, **A** para selecionar e **B** para voltar. Fechar a janela mantém o executor em funcionamento.
 
-Na tela do Deck, alterne **Em execução** e **Na fila** à esquerda ou **Resultados** e **Projetos** à direita. Quando a lista ocupa mais de uma página, as setas junto ao título mostram os itens seguintes. Na aba **Projetos**, a lista começa pelos projetos com mais testes em execução. Em caso de empate, aparece primeiro quem tem mais tarefas na fila. A paginação dos totais por projeto mantém as linhas de todos os projetos nos gráficos.
-
-Durante os testes, o título mostra os projetos em execução. Se houver mais de dois, o número ao lado indica quantos outros estão ativos. Cada linha identifica a tarefa, o projeto, o agente e a última atividade informada pelo teste. O cronômetro usa o horário do Deck e conta os segundos entre as leituras da fila, inclusive quando o log está aberto. Quando a conexão cai, o relógio para. Ao reconectar, volta ao tempo do executor. Ao terminar, o log mostra a duração registrada.
-
-No Deck ou no painel do Mac, selecione o nome de uma tarefa na tela de acompanhamento para ler o log. Se o título ou o comando forem longos, mova o foco para o cabeçalho e use o direcional para percorrer o texto. O cabeçalho e a saída rolam separadamente, e **Voltar** permanece no mesmo lugar. A saída acompanha as novas linhas enquanto você estiver no fim. Ao rolar para cima, o painel mantém sua posição. **Ir ao fim** volta a acompanhar a execução. Quando o teste termina, o painel faz a última leitura e mostra o resultado. Em tarefas `mix test`, o cabeçalho destaca a última contagem de testes e falhas encontrada na saída do ExUnit. **Voltar** devolve o foco à tarefa.
+Selecione uma tarefa para ler o log. A saída acompanha as novas linhas até você rolar para cima. **Ir ao fim** retoma o acompanhamento. O cronômetro congela durante a desconexão e recupera o tempo registrado quando o painel reconecta.
 
 ## Comparar o uso por projeto
 
-Na faixa inferior, **Envios de testes** conta cada tarefa uma vez, na hora em que entrou na fila. Uma suíte com 27 casos conta como um envio. **Tempo de execução** soma os minutos em que as tarefas de cada projeto ocuparam vagas, incluindo a preparação do ambiente. Duas tarefas que rodam por dez minutos ao mesmo tempo somam vinte minutos. A espera na fila fica fora dessa soma.
-
-A janela de **6 horas** usa intervalos de 15 minutos. Em **24 horas**, cada intervalo tem uma hora. Os gráficos têm o mesmo eixo de tempo e cada projeto mantém a sua cor. A tabela começa ordenada por envios. Selecione **Tempo** para comparar quanto tempo de execução cada projeto consumiu, ou **Envios** para voltar à contagem. Com o mouse, pare sobre um intervalo para ver os valores das linhas. Na tela de controles, o filtro de projeto também se aplica aos gráficos.
-
-A leitura é atualizada a cada minuto com o histórico dos projetos cadastrados, incluindo tarefas em andamento e projetos com zero envios no período.
+**Envios de testes** conta cada tarefa na hora em que entrou na fila. **Tempo de execução** soma o tempo de ocupação das vagas, incluindo a preparação. Duas tarefas simultâneas de dez minutos somam vinte minutos. Os gráficos permitem filtrar o projeto e consultar as últimas 6 ou 24 horas.
 
 ## Retomar a transmissão no Mac
 
-Emparelhe o Steam Link, escolha o Desktop como destino da transmissão e deixe a janela aberta. O componente opcional **Deck Link** observa a inicialização do Deck pelo túnel local. Depois de um reinício, o executor atende a fila assim que inicia. O Deck Link recebe o novo identificador de boot quando o processo Steam está escutando na porta TCP 27036. Só então ele procura o computador emparelhado e aciona o botão de iniciar na janela do Steam Link. O Steam Link pode recriar a janela de vídeo durante a conexão. O Deck Link reaplica a posição e o tamanho da transmissão anterior. Fechar o aplicativo Steam Link encerra o monitoramento daquela sessão. A fila funciona enquanto a transmissão está fechada.
+No Mac, emparelhe o Steam Link com o Deck e deixe sua janela aberta. Para retomar a transmissão após um reinício do Deck, instale o auxiliar opcional com `python3 mac/install-link.py` usando as ferramentas de linha de comando do Xcode. Se necessário, passe `--host-name "Nome no Steam Link"`.
 
-Instale no Mac com as ferramentas de linha de comando do Xcode disponíveis:
-
-```sh
-python3 mac/install-link.py
-```
-
-Se o computador aparecer com outro nome na tela de emparelhamento, acrescente `--host-name "Nome no Steam Link"`. O macOS pede acesso de **Acessibilidade** para `~/Applications/Deck Link.app`. A autorização permite selecionar o botão do Steam Link. O auxiliar usa a árvore de acessibilidade do aplicativo e dispensa a gravação da tela. Uma atualização do executável compilado localmente pode exigir adicionar a nova cópia em **Privacidade e Segurança → Acessibilidade**. Repetir a instalação da mesma versão preserva a cópia autorizada.
+Autorize `~/Applications/Deck Link.app` em **Privacidade e Segurança → Acessibilidade**. Uma nova compilação pode precisar de autorização novamente. O auxiliar espera o Steam Remote Play ficar disponível na porta TCP 27036. A fila segue funcionando mesmo durante uma interrupção do vídeo.
 
 Para saber se o Steam Link está fechado, aberto ou transmitindo, execute `deck-runner video-status` no Mac. O diagnóstico também mostra o serviço de retomada, a autorização de Acessibilidade e a disponibilidade do Steam Remote Play. Use `deck-runner doctor` para verificar o executor enquanto o Steam inicia. Para consultar o histórico da retomada, leia `~/Library/Logs/deck-runner/steam-link.log`. Para desativá-la, descarregue o serviço e remova seu arquivo de inicialização:
 
@@ -99,15 +75,13 @@ mv ~/Library/LaunchAgents/io.github.deck-runner.steam-link.plist ~/Documents/
 
 ## Ajustar as vagas
 
-Na tela principal do Deck ou do Mac, selecione **Ajustar vagas** ao lado de **Ocupação do Deck**. Use **+** e **−** para escolher o total e o máximo que um único projeto pode ocupar. Selecione **Aplicar**. O toque, o teclado e o direcional com o botão A funcionam nessa janela.
-
-A mudança vale para a próxima admissão e fica salva após suspensão, reinício e atualização. Ao reduzir o total abaixo da ocupação atual, as tarefas em andamento terminam normalmente. A fila volta a preencher vagas quando a ocupação fica abaixo do novo limite. O total e o limite por projeto são compartilhados por todos os agentes e worktrees. O comando `deck-runner status` mostra os valores atuais.
+No Deck ou nos controles do Mac, abra **Ocupação do Deck → Ajustar vagas** e aplique o total e o limite por projeto. Os valores persistem entre reinícios e passam a valer na próxima admissão. As tarefas em execução terminam normalmente. Consulte os limites atuais em `deck-runner status`.
 
 ## Armazenamento dos testes
 
-Em **Testes no disco**, ao lado do disco livre, confira os blocos ocupados pelas cópias de trabalho, caches de compilação, repositórios Git e arquivos das tarefas. A margem indica quantos bytes ainda separam o disco livre do limite de admissão. Quando ela acaba, a janela calcula quanto liberar para aceitar novos testes. A tabela separa os valores por projeto. Uma medição em segundo plano é compartilhada pelos painéis e reutilizada por até três minutos. O horário indica quando ela terminou. Imagens do Podman, bancos externos e jogos ficam fora desses totais.
+Abra **Testes no disco** para consultar o uso por projeto e a margem para novos envios. A medição cobre worktrees, caches, repositórios e arquivos das tarefas. Imagens do Podman e jogos ficam fora do total.
 
-**Limpar cópias** mostra quantos testes encerrados entram na limpeza. **Confirmar limpeza** remove somente as cópias daquela medição que o Git reconhece e que continuam encerradas. O cache, os repositórios, os logs e o histórico permanecem disponíveis. A janela pode ser fechada durante a operação. Ao terminar, o painel mede de novo. Sem uma limpeza manual, continua valendo a retenção normal das cópias por um dia.
+**Limpar cópias** calcula o espaço recuperável. **Confirmar limpeza** remove apenas worktrees de tarefas encerradas que continuam elegíveis. Logs, caches e histórico têm retenção própria.
 
 ## Limites e retenção
 

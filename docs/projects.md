@@ -17,7 +17,7 @@ deck-runner add ~/projects/site --profile node
 deck-runner add ~/projects/analise --profile custom --image localhost/analise:test --test '["python3","-m","pytest"]'
 ```
 
-Use o usuário e a porta configurados no ambiente de testes do projeto. A senha do PostgreSQL descartável é igual ao nome do usuário. Cada container recebe um PostgreSQL próprio. O perfil Mix define `MIX_TEST_PARTITION` por tarefa. Use `--no-test-partition` quando a suíte depende do nome padrão do banco. Uma imagem Mix alternativa precisa fornecer o mesmo ambiente de inicialização da imagem base.
+No perfil Mix, cada tarefa recebe um PostgreSQL próprio. Use o usuário e a porta esperados pelo projeto. A senha do banco descartável é igual ao nome do usuário. O perfil define `MIX_TEST_PARTITION` por tarefa. Use `--no-test-partition` quando a suíte depende do nome padrão do banco. Uma imagem Mix alternativa precisa fornecer o mesmo ambiente de inicialização da imagem base.
 
 Com o projeto ocioso, repita `add` com a configuração completa e `--update` para alterá-la. `remove NOME` arquiva o cadastro e conserva o histórico. O comando `projects` descobre repositórios no primeiro nível de `~/projects`. O comando `add` também aceita repositórios em subpastas.
 
@@ -25,13 +25,18 @@ Worktrees vinculados e clones cujo `origin` é o caminho absoluto da pasta princ
 
 ## Contrato de execução
 
-Na aba **Na fila**, cada tarefa mostra quanto tempo já esperou. Ao passar o mouse sobre o cronômetro, aparece a hora de entrada.
+| Comando | Resposta para a frente |
+|---|---|
+| `preflight --repo CAMINHO` | JSON com `ready` e `code`. Saída 0 permite tentar o envio. Saída 2 indica um bloqueio. |
+| `submit --repo CAMINHO --agent AGENTE --label RÓTULO -- COMANDO` | `id`, `state`, `snapshot_commit` e `tree` confirmam que o Deck aceitou o conteúdo. |
+| `job ID --summary` | Uma leitura imediata. A saída 0 significa que a consulta funcionou, inclusive para tarefas na fila ou que falharam. |
+| `wait ID --summary` | Aguarda o término. Transições vão para stderr e o recibo JSON vai para stdout. Saída 0 para `passed`, 1 para outro estado final e 2 para erro de consulta. |
+| `logs ID --tail 40` | Últimas 40 linhas. O padrão é 100. Use `--tail 0` para o log completo. |
 
-1. Execute `preflight --repo CAMINHO` no ambiente de envio. Com `ready: true`, envie o **worktree real**, inclusive com edições locais. Informe o agente e a tarefa em `--agent` e uma descrição curta em `--label`. Se o diagnóstico falhar, consulte a [tabela de recuperação](operations.md#decisão-da-frente-antes-do-envio).
-2. Guarde o ID retornado por `submit`. `wait ID` acompanha até o resultado e devolve código 0 para sucesso, 1 para tarefa sem sucesso ou 2 para erro de comunicação. `job ID` inclui a revisão original, a árvore enviada, o resultado, horários e memória de pico. O cabeçalho do log no painel também mostra o pico de RAM medido e o código de saída registrado.
-3. Após editar o código, envie um novo snapshot. Se a conexão cair após começar o envio e antes de receber o ID, consulte o painel pela descrição antes de reenviar. Para cancelar a própria tarefa, use `cancel ID`.
-4. Mantenha verificações específicas de macOS, navegador ou release nos ambientes exigidos pelo projeto.
+No recibo, `tree` identifica os arquivos testados e `command` delimita o que foi executado. `state` vem do executor. `exit_code` pode ser nulo, por exemplo ao cancelar uma tarefa ainda na fila. `test_summary` traz o último rodapé reconhecido de ExUnit, unittest ou Node (TAP/contador nativo) nos últimos 32 KiB de log. Pode ser nulo para outros comandos, logs expirados ou estações antigas. Em suítes que imprimem vários rodapés, relate esse valor como a última contagem registrada. Para a revisão de origem, horários ou pico de memória, consulte `job ID` sem a opção de resumo.
 
-O snapshot contém o conteúdo atual dos arquivos versionados e arquivos novos não ignorados, com limite de 1 GiB. Exclusões entram na árvore. O bundle Git usa um commit sem ancestrais. Submódulos e links para fora do projeto exigem adaptação. Os filtros de arquivos sensíveis estão descritos em [SECURITY.md](../SECURITY.md).
+Para comunicar o resultado, use uma frase como `Projeto X passou em mix test test/arquivo_test.exs (4 testes, 0 falhas). Job ID, árvore TREE.` Se o executor marcar falha mesmo após um rodapé verde, relate a falha e consulte o fim do log. Se a contagem estiver ausente, informe apenas o que o comando e o estado comprovam.
 
-Para suítes maiores, passe `--size large` (2,5 GiB) ou `--size xl` (5 GiB). O padrão é 1,25 GiB. `--timeout` aceita entre 30 e 7.200 segundos, com padrão de 3.600 (uma hora). O scheduler prioriza o projeto elegível com menos vagas em uso e mantém a ordem de chegada em cada projeto.
+O snapshot contém os arquivos versionados, as exclusões e os arquivos novos não ignorados. O limite do upload é 1 GiB. Submódulos e links para fora do projeto exigem preparação. Os filtros de credenciais estão no [modelo de confiança](../SECURITY.md).
+
+Passe `--size large` (2,5 GiB) ou `--size xl` (5 GiB) para suítes maiores. O padrão é 1,25 GiB. `--timeout` aceita de 30 a 7.200 segundos, com padrão de 3.600. Para investigar falhas ou validar o navegador em outro ambiente, consulte o [guia de operação](operations.md#decisão-da-frente-antes-do-envio).

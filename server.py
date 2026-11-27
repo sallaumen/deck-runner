@@ -288,13 +288,70 @@ def capacity_bytes(active, pool_mib):
     )
 
 
-def tail_log(path, size):
+def tail_log(path, size, *, whole_lines=False):
     try:
         with path.open("rb") as source:
-            source.seek(max(0, os.fstat(source.fileno()).st_size - size))
+            start = max(0, os.fstat(source.fileno()).st_size - size)
+            source.seek(start)
+            if start and whole_lines:
+                source.seek(start - 1)
+                if source.read(1) != b"\n":
+                    source.readline(size)
             return source.read(size).decode(errors="replace")
     except FileNotFoundError:
         return ""
+
+
+def test_footer(command, output):
+    """Last complete, recognizable suite footer. The executor owns the job outcome."""
+    output = re.sub(r"\x1b\[[0-9;]*m", "", output).replace("\r\n", "\n").replace("\r", "\n")
+    if command[:2] == ["mix", "test"]:
+        pattern = (r"^(?:\d+ (?:doctests?|properties|property), )*\d+ tests?, \d+ failures?"
+                   r"(?:, \d+ (?:excluded|skipped|invalid|pending))*$")
+    elif command[:3] == ["python3", "-m", "unittest"]:
+        pattern = (r"^Ran \d+ tests? in [0-9.]+s\n\n(?:OK|FAILED)"
+                   r"(?: \([a-z ]+=\d+(?:, [a-z ]+=\d+)*\))?$")
+    elif command[:2] in (["npm", "test"], ["node", "--test"]):
+        pattern = (r"^(?:#|ℹ) tests \d+\n(?:#|ℹ) suites \d+\n(?:#|ℹ) pass \d+\n(?:#|ℹ) fail \d+"
+                   r"(?:\n(?:#|ℹ) (?:cancelled|skipped|todo) \d+)*$")
+    else:
+        return None
+    matches = re.findall(pattern, output, re.MULTILINE)
+    if not matches:
+        return None
+    return " · ".join(line.removeprefix("# ").removeprefix("ℹ ") for line in matches[-1].splitlines() if line)
+
+
+def write_log(path, destination, lines):
+    try:
+        with path.open("rb") as source:
+            if lines <= 0:
+                shutil.copyfileobj(source, destination)
+                return
+            end = source.seek(0, os.SEEK_END)
+            # A trailing newline belongs to the last line. Search before the final byte.
+            position = max(0, end - 1)
+            start = 0
+            while position > 0:
+                length = min(position, 64 * 1024)
+                position -= length
+                source.seek(position)
+                block = source.read(length)
+                breaks = block.count(b"\n")
+                if breaks >= lines:
+                    start = position + len(block.rsplit(b"\n", lines)[0]) + 1
+                    break
+                lines -= breaks
+            source.seek(start)
+            remaining = end - start
+            while remaining > 0:
+                chunk = source.read(min(remaining, 64 * 1024))
+                if not chunk:
+                    break
+                destination.write(chunk)
+                remaining -= len(chunk)
+    except FileNotFoundError:
+        pass  # Queued jobs and expired logs can both have no output yet available.
 
 
 def status():
@@ -1105,11 +1162,13 @@ def main():
     elif args.action == "job":
         result = jobrow(args.id)
         result["meta"] = json.loads(result["meta"])
+        if os.environ.get("DECK_RUNNER_JOB_SUMMARY") == "1" and result["state"] in ("passed", "failed"):
+            output = tail_log(ROOT / "jobs" / args.id / "output.log", 32 * 1024, whole_lines=True)
+            result["test_summary"] = test_footer(result["meta"].get("command", []), output)
     elif args.action == "logs":
         jobrow(args.id)
         p = ROOT / "jobs" / args.id / "output.log"
-        if p.exists():
-            sys.stdout.buffer.write(p.read_bytes())
+        write_log(p, sys.stdout.buffer, int(os.environ.get("DECK_RUNNER_LOG_TAIL", "0")))
         return
     elif args.action == "cancel":
         cancel(args.id)
