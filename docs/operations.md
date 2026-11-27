@@ -39,6 +39,14 @@ Após o envio, `wait ID` repete até três consultas consecutivas em falhas de t
 
 **Quando Claude e GPT divergem.** Execute o preflight no mesmo projeto e guarde o código de saída em cada sessão que tiver disponível. Se uma delas reporta `session_socket_denied` e a outra recebe `ready`, o bloqueio observado está no caminho da primeira sessão. Mesmo no macOS, `uname` identifica somente o sistema operacional. O `codex doctor` descreve a instalação e a configuração que a CLI carregou. Para afirmar que aquela conversa envia testes, procure um ID de execução obtido por ela. Ao usar o Mac pareado, registre qual ambiente iniciou o teste.
 
+**Quando a frente precisa abrir Phoenix no Mac.** Faça as sondagens na sessão que vai iniciar o servidor e apenas para os serviços que o projeto usa.
+
+- Para testar a porta local, rode `elixir -e '{:ok, s} = :gen_tcp.listen(0, ip: {127, 0, 0, 1}); :gen_tcp.close(s)'`. A porta é efêmera. Uma falha `:eperm` encerra o comando com erro antes de iniciar Phoenix.
+- Para um projeto que usa Docker, `docker version --format '{{.Server.Version}}'` exige resposta do daemon. Uma negativa no socket identifica uma falha de acesso ao Docker naquela sessão.
+- Para PostgreSQL, faça uma consulta `SELECT 1` com o banco, a porta e a identidade do ambiente de teste do projeto. Registre o resultado sem incluir credenciais.
+
+Se a validação local estiver bloqueada, um `preflight` bem-sucedido ainda permite enviar os testes Linux compatíveis ao Deck. Para concluir a verificação visual, abra a rota em um navegador no ambiente autorizado com o mesmo código e confirme a conexão do LiveView quando aplicável.
+
 ### O painel está ativo e uma frente falha ao enviar
 
 **Executor ativo** indica que o Deck concluiu um ciclo de verificação da fila nos últimos 15 segundos. A tela local do Deck consegue receber essa informação mesmo com o Mac desconectado. Uma fila pausada ou aguardando memória aceita tarefas para executar depois. Com menos de 15 GiB livres, novos envios são recusados.
