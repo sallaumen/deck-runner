@@ -21,6 +21,32 @@ O painel e a fila atendem somente em loopback. No Mac, abra **Testes no Deck**. 
 
 O arquivo `~/.config/deck-runner/host` no Mac guarda o destino. O cliente também aceita `DECK_RUNNER_HOST` para uma conexão avulsa. Para mudar a conexão persistente, rode o instalador do Mac novamente.
 
+### Decisão da frente antes do envio
+
+`deck-runner preflight --repo CAMINHO` imprime um objeto JSON e sai com 0 quando o projeto pode tentar enviar um snapshot, ou 2 quando a consulta identifica um bloqueio. O comando consulta a estação por SSH sem criar uma tarefa. A saída de outra conversa, o conteúdo do `config.toml` e o painel podem descrever ambientes diferentes. Faça a consulta na sessão e no checkout que vão executar `submit`.
+
+| Campo `code` | Como prosseguir |
+|---|---|
+| `ready` | Envie o teste. `queue_note` pode indicar pausa, memória ou vagas. Aguarde o ID aceito mesmo que a execução demore a começar. |
+| `session_socket_denied` | O processo recebeu uma negativa ao abrir o socket. Confira o perfil efetivo da sessão. Uma frente com acesso autorizado ao mesmo checkout pode verificar o caminho e o estado do Git, executar o próprio preflight e enviar por SSH. |
+| `ssh_dns`, `ssh_connection`, `ssh_timeout` | Confira o destino, a resolução do nome e a disponibilidade do Deck na rede. Com um ID já recebido, retome `wait ID`. |
+| `ssh_auth`, `ssh_host_key` | Confira a identidade do usuário e a chave disponível no Mac. Se a chave da estação mudou, compare a impressão digital no Deck antes de atualizar a confiança. |
+| `git_checkout`, `project_registration` | Confira o caminho real da frente e as [regras de cadastro](projects.md#perfis). Um envio da pasta principal pode conter código diferente. |
+| `executor_offline`, `disk_limit` | Consulte o serviço ou o espaço no Deck de acordo com o erro. Repita o preflight após a recuperação. |
+| `ssh_error`, `client_error`, `station_response` | Leia `detail` e execute `doctor --repo CAMINHO` no mesmo ambiente para obter o diagnóstico da estação e do túnel. |
+
+Após o envio, `wait ID` repete até três consultas consecutivas em falhas de transporte reconhecidas. A consulta usa sempre o mesmo ID. Se a conexão continuar indisponível, guarde esse ID e retome o acompanhamento quando a sessão recuperar acesso. Um erro de comunicação deixa o resultado do teste em aberto. Registre o estado final, o código de saída e o resumo de `logs ID` antes de declarar que o teste passou.
+
+**Quando Claude e GPT divergem.** Execute o preflight no mesmo projeto e guarde o código de saída em cada sessão que tiver disponível. Se uma delas reporta `session_socket_denied` e a outra recebe `ready`, o bloqueio observado está no caminho da primeira sessão. Mesmo no macOS, `uname` identifica somente o sistema operacional. O `codex doctor` descreve a instalação e a configuração que a CLI carregou. Para afirmar que aquela conversa envia testes, procure um ID de execução obtido por ela. Ao usar o Mac pareado, registre qual ambiente iniciou o teste.
+
+**Quando a frente precisa abrir Phoenix no Mac.** Faça as sondagens na sessão que vai iniciar o servidor e apenas para os serviços que o projeto usa.
+
+- Para testar a porta local, rode `elixir -e '{:ok, s} = :gen_tcp.listen(0, ip: {127, 0, 0, 1}); :gen_tcp.close(s)'`. A porta é efêmera. Uma falha `:eperm` encerra o comando com erro antes de iniciar Phoenix.
+- Para um projeto que usa Docker, `docker version --format '{{.Server.Version}}'` exige resposta do daemon. Uma negativa no socket identifica uma falha de acesso ao Docker naquela sessão.
+- Para PostgreSQL, faça uma consulta `SELECT 1` com o banco, a porta e a identidade do ambiente de teste do projeto. Registre o resultado sem incluir credenciais.
+
+Se a validação local estiver bloqueada, um `preflight` bem-sucedido ainda permite enviar os testes Linux compatíveis ao Deck. Para concluir a verificação visual, abra a rota em um navegador no ambiente autorizado com o mesmo código e confirme a conexão do LiveView quando aplicável.
+
 ### O painel está ativo e uma frente falha ao enviar
 
 **Executor ativo** indica que o Deck concluiu um ciclo de verificação da fila nos últimos 15 segundos. A tela local do Deck consegue receber essa informação mesmo com o Mac desconectado. Uma fila pausada ou aguardando memória aceita tarefas para executar depois. Com menos de 15 GiB livres, novos envios são recusados.

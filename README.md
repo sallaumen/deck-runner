@@ -8,9 +8,9 @@ Transforme um Steam Deck em uma bancada de testes para os projetos do seu Mac. U
 
 ## Validação por sessão e por worktree
 
-O caminho padrão é o cliente do Mac pelo SSH da rede local. No Terminal ou em uma sessão de agente com acesso à rede do Deck, entre no worktree da frente e rode `~/.local/bin/deck-runner doctor`. Siga com [o envio do teste](#envie-um-teste) nessa mesma pasta. Guarde o ID, acompanhe `wait ID` e confira `logs ID`. Esse fluxo usa apenas o cliente instalado e o OpenSSH do Mac.
+O caminho padrão é o cliente do Mac pelo SSH da rede local. Na sessão que vai enviar o teste, rode `~/.local/bin/deck-runner preflight --repo /caminho/da/frente`. Ele consulta o executor por SSH e verifica o cadastro e o disco. Com `ready: true`, siga com [o envio do teste](#envie-um-teste) dessa pasta. Com `ready: false`, o campo `code` aponta para a [ação de recuperação](docs/operations.md#decisão-da-frente-antes-do-envio). Use `doctor` quando também precisar diagnosticar o painel.
 
-Para trabalhar pelo Codex CLI já instalado no Mac, `codex -C /caminho/da/frente` abre uma sessão nesse checkout. O agente pode executar o fluxo acima quando o perfil da sessão permite SSH. Um erro de socket como `EPERM` identifica uma restrição daquela sessão. Se outra frente local tem acesso autorizado, ela pode validar a mesma cópia, inclusive as mudanças sem commit. Confira o caminho, `git rev-parse HEAD` e `git status --short`. Registre a árvore que o Deck recebeu. Para validar uma tela Phoenix, execute o servidor e o navegador no Mac, com porta e banco de teste próprios.
+Para trabalhar pelo Codex CLI já instalado no Mac, `codex -C /caminho/da/frente` abre uma sessão nesse checkout. Se outra frente local tem acesso autorizado ao Deck, ela pode validar a mesma cópia, inclusive as mudanças sem commit. Confira o caminho, `git rev-parse HEAD` e `git status --short`. Guarde o ID e a árvore de `submit`, acompanhe `wait ID` e confirme o resultado em `logs ID`. Para validar uma tela Phoenix, execute o servidor e o navegador no Mac, com porta e banco de teste próprios.
 
 Se a equipe já usa **Remote Desktop Commander**, ele é uma opção para operar o Mac a partir de uma conversa. Selecione o Mac online em `list_devices`, use `start_process` com o caminho absoluto do worktree e acompanhe o PID com `read_process_output` até receber o ID da tarefa do Deck.
 
