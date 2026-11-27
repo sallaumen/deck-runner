@@ -401,6 +401,87 @@ class ClientReadinessTest(unittest.TestCase):
             client.doctor(".")
 
 
+class AgentTransportTest(unittest.TestCase):
+    def setUp(self):
+        self.out = self.enterContext(contextlib.redirect_stdout(io.StringIO()))
+        self.err = self.enterContext(contextlib.redirect_stderr(io.StringIO()))
+
+    def test_preflight_uses_submission_path_when_queue_paused_and_dashboard_unavailable(self):
+        state = dict(alive=True, reason="Pausado", projects=[dict(common="/repo/.git", name="app")])
+        with (
+            patch.object(client, "call", return_value=state) as remote,
+            patch.object(client.catalog, "common_dir", return_value=Path("/repo/.git")),
+            patch.object(client.urllib.request, "urlopen", side_effect=AssertionError("HTTP used")),
+        ):
+            self.assertEqual(client.preflight("/repo"), 0)
+            remote.assert_called_once_with("status")
+        report = json.loads(self.out.getvalue())
+        self.assertTrue(report["ready"])
+        self.assertEqual((report["project"], report["queue_note"]), ("app", "Pausado"))
+
+    def test_preflight_classifies_real_ssh_exit_and_emits_only_json(self):
+        denied = "Control socket connect(/tmp/control): Operation not permitted"
+        for stderr, code in (
+            (denied + "\nssh: Could not resolve hostname deck.local", "session_socket_denied"),
+            (denied + "\ndeck@station: Permission denied (publickey).", "ssh_auth"),
+            ("Host key verification failed.", "ssh_host_key"),
+            ("ssh: Could not resolve hostname nowhere", "ssh_dns"),
+            ("ssh: connect to host h port 22: Connection refused", "ssh_connection"),
+            ("unexpected SSH failure", "ssh_error"),
+        ):
+            result = subprocess.CompletedProcess([], 255, b"", stderr.encode())
+            with self.subTest(code=code), patch.object(client.subprocess, "run", return_value=result):
+                self.out.seek(0)
+                self.out.truncate()
+                self.assertEqual(client.preflight("."), 2)
+                report = json.loads(self.out.getvalue())
+                self.assertFalse(report["ready"])
+                self.assertEqual(report["code"], code)
+                self.assertIn(stderr, report["detail"])
+
+    def test_submit_and_preflight_share_admission_failures(self):
+        for state, code in (
+            ({}, "station_response"),
+            (dict(alive=False), "executor_offline"),
+            (dict(alive=True, projects=[], disk_free=9, disk_admit=10), "disk_limit"),
+            (dict(alive=True, projects=[]), "project_registration"),
+        ):
+            with self.subTest(code=code), patch.object(client, "call", return_value=state):
+                self.out.seek(0)
+                self.out.truncate()
+                self.assertEqual(client.preflight("."), 2)
+                self.assertEqual(json.loads(self.out.getvalue())["code"], code)
+                with (
+                    patch.object(client.sys, "argv", ["deck-runner", "submit", "--agent", "test", "--label", "test"]),
+                    patch.object(client, "snapshot", side_effect=AssertionError("snapshot attempted")),
+                    self.assertRaises(client.RunnerError) as error,
+                ):
+                    client.main()
+                self.assertEqual(error.exception.code, code)
+
+    def test_wait_recovers_after_transport_loss_and_keeps_same_job(self):
+        outage = client.ssh_error("Connection reset by peer")
+        sequence = [outage] * 3 + [{"state": "running"}] + [outage] * 3 + [{"state": "passed"}]
+        with patch.object(client, "call", side_effect=sequence) as remote, patch.object(client.time, "sleep"):
+            self.assertEqual(client.wait_job("job-id", 1), 0)
+            self.assertEqual([c.args for c in remote.call_args_list], [("job", "job-id")] * len(sequence))
+        self.assertEqual(json.loads(self.out.getvalue())["state"], "passed")
+
+    def test_wait_stops_on_exhaustion_or_permanent_denial_with_resume_id(self):
+        for error, attempts in ((client.ssh_error("Connection timed out"), 4),
+                                (client.ssh_error("Permission denied (publickey)."), 1)):
+            with (
+                self.subTest(code=error.code),
+                patch.object(client, "call", side_effect=error) as remote,
+                patch.object(client.time, "sleep") as sleep,
+                self.assertRaisesRegex(client.RunnerError, "wait job-id"),
+            ):
+                client.wait_job("job-id", 1)
+            self.assertEqual(remote.call_count, attempts)
+            self.assertEqual(sleep.call_count, attempts - 1)
+        self.assertEqual(self.out.getvalue(), "")
+
+
 class LocalCloneRegistrationTest(unittest.TestCase):
     def setUp(self):
         area = tempfile.TemporaryDirectory()

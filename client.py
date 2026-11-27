@@ -35,6 +35,40 @@ FINISHED = {
 EXCLUDE = {".cyclops", ".idea", ".playwright-mcp", ".DS_Store"}
 
 
+class RunnerError(RuntimeError):
+    def __init__(self, code, detail):
+        super().__init__(detail)
+        self.code = code
+
+
+def ssh_error(detail):
+    message = detail.lower()
+    # OpenSSH can fall back to a fresh connection after a control socket error.
+    if "host key verification failed" in message or "remote host identification has changed" in message:
+        return RunnerError("ssh_host_key", detail)
+    if "permission denied (" in message:
+        return RunnerError("ssh_auth", detail)
+    if any(
+        ("operation not permitted" in line or "permission denied" in line)
+        and ("control socket connect(" in line or "connect to host " in line)
+        for line in message.splitlines()
+    ):
+        return RunnerError("session_socket_denied", detail + (
+            "\nO sistema negou acesso ao socket SSH nesta sessão. "
+            "Consulte o perfil de rede do processo e a validação por worktree em "
+            f"{Path(__file__).resolve().with_name('README.md')}."
+        ))
+    if "could not resolve hostname" in message:
+        return RunnerError("ssh_dns", detail)
+    if any(fragment in message for fragment in (
+        "timed out", "connection refused", "connection reset",
+        "broken pipe", "connection closed", "closed by remote host", "no route to host",
+        "network is unreachable", "timeout, server",
+    )):
+        return RunnerError("ssh_connection", detail)
+    return RunnerError("ssh_error", detail)
+
+
 def call(action, job=None, stdin=None, raw=False):
     command = shlex.join(["python3", REMOTE, action] + ([job] if job else []))
     try:
@@ -43,22 +77,18 @@ def call(action, job=None, stdin=None, raw=False):
             timeout=45 if action in ("status", "job") else None,
         )
     except subprocess.TimeoutExpired as exc:
-        raise RuntimeError(f"Tempo esgotado consultando {action} via SSH em {HOST}.") from exc
+        raise RunnerError("ssh_timeout", f"Tempo esgotado consultando {action} via SSH em {HOST}.") from exc
     if p.returncode:
         detail = p.stderr.decode(errors="replace").strip() or f"SSH exit {p.returncode}"
-        if p.returncode == 255 and any(
-            "Operation not permitted" in line
-            and ("Control socket connect(" in line or "connect to host " in line)
-            for line in detail.splitlines()
-        ):
-            detail += (
-                "\nO sistema negou acesso ao socket SSH nesta sessão. "
-                "Confira a permissão de rede da sessão. Uma frente local no Mac com acesso "
-                "ao Deck pode executar doctor --repo e o teste no mesmo checkout por SSH. "
-                f"Consulte {Path(__file__).resolve().with_name('README.md')}."
-            )
+        if p.returncode == 255:
+            raise ssh_error(detail)
         raise RuntimeError(detail)
-    return p.stdout if raw else json.loads(p.stdout)
+    if raw:
+        return p.stdout
+    try:
+        return json.loads(p.stdout)
+    except (UnicodeDecodeError, json.JSONDecodeError) as exc:
+        raise RunnerError("station_response", f"Resposta JSON inválida do executor ao consultar {action}.") from exc
 
 
 def git(repo, *args):
@@ -140,7 +170,7 @@ def signature(path):
 
 
 def snapshot(repo, folder, agent, label, command, timeout, project, budget=DEFAULT_MIB):
-    repo = Path(git(repo, "rev-parse", "--show-toplevel").decode().strip())
+    repo = Path(git(Path(repo).expanduser(), "rev-parse", "--show-toplevel").decode().strip())
     head = git(repo, "rev-parse", "HEAD").decode().strip()
     tracked = set(git(repo, "ls-files", "-z").decode().split("\0")) - {""}
     untracked = set(
@@ -368,6 +398,69 @@ def registered_project(state, repo):
     )
 
 
+def submission_project(state, repo):
+    if not isinstance(state, dict) or not isinstance(state.get("alive"), bool):
+        raise RunnerError("station_response", "O executor respondeu sem informar seu estado.")
+    if not state["alive"]:
+        raise RunnerError("executor_offline", "Deck executor offline; nothing submitted")
+    if not isinstance(state.get("projects"), list) or any(
+        not isinstance(p, dict) or not isinstance(p.get("common"), str) or not isinstance(p.get("name"), str)
+        for p in state["projects"]
+    ):
+        raise RunnerError("station_response", "O executor respondeu com um cadastro de projetos inválido.")
+    if "disk_admit" in state and not all(isinstance(state.get(key), int) for key in ("disk_admit", "disk_free")):
+        raise RunnerError("station_response", "O executor respondeu com limites de disco inválidos.")
+    if uploads_blocked(state):
+        raise RunnerError("disk_limit", "Envio bloqueado pelo limite de disco no Deck.")
+    try:
+        return registered_project(state, repo)
+    except subprocess.CalledProcessError as exc:
+        raise RunnerError("git_checkout", f"O Git não conseguiu identificar o checkout em {repo}.") from exc
+    except ValueError as exc:
+        raise RunnerError("project_registration", str(exc)) from exc
+
+
+def preflight(repo):
+    path = os.path.abspath(os.path.expanduser(repo))
+    report = {"host": HOST, "repo": path}
+    try:
+        state = call("status")
+        project = submission_project(state, path)
+    except RunnerError as exc:
+        report.update(ready=False, code=exc.code, detail=str(exc))
+    except (OSError, RuntimeError, ValueError, subprocess.SubprocessError) as exc:
+        report.update(ready=False, code="client_error", detail=str(exc))
+    else:
+        report.update(ready=True, code="ready", project=project["name"], queue_note=state.get("reason", ""))
+    print(json.dumps(report, ensure_ascii=False))
+    return 0 if report["ready"] else 2
+
+
+def wait_job(job_id, poll):
+    previous = None
+    failures = 0
+    while True:
+        try:
+            job = call("job", job_id)
+            if not isinstance(job, dict) or not isinstance(job.get("state"), str):
+                raise RunnerError("station_response", "Resposta do executor sem o estado da tarefa.")
+        except RunnerError as exc:
+            if exc.code not in {"ssh_timeout", "ssh_connection"} or failures >= 3:
+                raise RunnerError(exc.code, f"{exc}\nRetome com deck-runner wait {job_id}.") from exc
+            failures += 1
+            print(f"{job_id}: {exc.code}. Nova consulta ao mesmo ID ({failures}/3).", file=sys.stderr)
+            time.sleep(min(10, max(1, poll)))
+            continue
+        failures = 0
+        if job["state"] != previous:
+            print(f"{job_id}: {job['state']}", file=sys.stderr)
+            previous = job["state"]
+        if job["state"] in FINISHED:
+            print(json.dumps(job, ensure_ascii=False))
+            return 0 if job["state"] == "passed" else 1
+        time.sleep(max(1, poll))
+
+
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     sub = parser.add_subparsers(dest="action", required=True)
@@ -421,6 +514,8 @@ def main():
     scope = diag.add_mutually_exclusive_group()
     scope.add_argument("--repo", help="Verify this worktree (defaults to the current Git checkout)")
     scope.add_argument("--station", action="store_true", help="Check only the station and local tunnel")
+    check = sub.add_parser("preflight", help="Check submission readiness over SSH and print JSON")
+    check.add_argument("--repo", default=".", help="Checkout to submit (default: current directory)")
     sub.add_parser("video-status", help="Check Steam Link video and automatic reconnection on this Mac")
     sub.add_parser("open")
     args = parser.parse_args()
@@ -471,16 +566,14 @@ def main():
     if args.action == "open":
         subprocess.run(["open", f"http://127.0.0.1:{settings.PORT}/"], check=True)
         return
+    if args.action == "preflight":
+        return preflight(args.repo)
     if args.action == "submit":
         state = call("status")
-        if not state["alive"]:
-            raise RuntimeError("Deck executor offline; nothing submitted")
+        project = submission_project(state, args.repo)
         command = args.command
         if command[:1] == ["--"]:
             command = command[1:]
-        if uploads_blocked(state):
-            raise RuntimeError("Envio bloqueado pelo limite de disco no Deck.")
-        project = registered_project(state, args.repo)
         command = command or project.get("test") or COMMANDS[project["profile"]]
         check_command(project["profile"], command, project.get("test"))
         budget = {"normal": DEFAULT_MIB, "large": 2560, "xl": 5120}[args.size]
@@ -511,16 +604,7 @@ def main():
         lines = call("logs", args.id, raw=True).decode(errors="replace").splitlines()
         print("\n".join(lines[-args.tail :] if args.tail > 0 else lines))
     elif args.action == "wait":
-        previous = None
-        while True:
-            job = call("job", args.id)
-            if job["state"] != previous:
-                print(f"{args.id}: {job['state']}", file=sys.stderr)
-                previous = job["state"]
-            if job["state"] in FINISHED:
-                print(json.dumps(job, ensure_ascii=False))
-                return 0 if job["state"] == "passed" else 1
-            time.sleep(max(1, args.poll))
+        return wait_job(args.id, args.poll)
     else:
         print(json.dumps(call(args.action, args.id), ensure_ascii=False, indent=2))
     return 0
